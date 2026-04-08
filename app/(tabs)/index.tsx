@@ -116,9 +116,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   logoImage: {
-    width: 90,
-    height: 52,
-    borderRadius: 8,
+    width: 130,
+    height: 75,
   },
   hamburger: {
     gap: 5,
@@ -222,6 +221,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderRadius: 30,
     alignSelf: 'flex-start',
+    marginBottom: 26,
   },
   purpleCTAText: {
     color: MPC.branco,
