@@ -10,6 +10,7 @@ export default function TabLayout() {
       }}>
       <Tabs.Screen name="index" />
       <Tabs.Screen name="explore" />
+      <Tabs.Screen name="inscricao" />
     </Tabs>
   );
 }
