@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   Linking,
@@ -37,11 +38,11 @@ export default function HomeScreen() {
 
       {/* Header flutuante */}
       <View style={styles.floatingHeader} pointerEvents="box-none">
-        <View style={styles.logoBox}>
-          <Text style={styles.logoBoxTop}>MOVIMENTO</Text>
-          <Text style={styles.logoBoxPro}>PRÓ</Text>
-          <Text style={styles.logoBoxBottom}>CRIANÇA</Text>
-        </View>
+        <Image
+          source={require('@/assets/images/logo.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
         <TouchableOpacity style={styles.hamburger} onPress={() => setMenuOpen(!menuOpen)}>
           <View style={[styles.hamburgerLine, { width: 22 }]} />
           <View style={[styles.hamburgerLine, { width: 16, alignSelf: 'flex-end' }]} />
@@ -114,30 +115,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
   },
-  logoBox: {
-    backgroundColor: '#5B2FBE',
+  logoImage: {
+    width: 90,
+    height: 52,
     borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignItems: 'center',
-  },
-  logoBoxTop: {
-    color: MPC.branco,
-    fontSize: 7,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  logoBoxPro: {
-    color: MPC.laranja,
-    fontSize: 18,
-    fontWeight: '900',
-    lineHeight: 20,
-  },
-  logoBoxBottom: {
-    color: MPC.branco,
-    fontSize: 7,
-    fontWeight: '700',
-    letterSpacing: 1,
   },
   hamburger: {
     gap: 5,
