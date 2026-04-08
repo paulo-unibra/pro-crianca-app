@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { MPC } from '@/constants/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -28,9 +29,28 @@ function DecorativeShape() {
   );
 }
 
+// Itens do menu: label + ação
+type MenuItem = {
+  label: string;
+  action: 'link' | 'navigate';
+  url?: string;
+  route?: string;
+};
+
+const MENU_ITEMS: MenuItem[] = [
+  { label: 'HOME', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
+  { label: 'QUEM SOMOS', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
+  { label: 'ATIVIDADES', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
+  { label: 'PROJETOS', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
+  { label: 'UNIDADES', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
+  { label: 'CURSOS', action: 'navigate', route: '/cursos' },
+  { label: 'QUERO AJUDAR', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/quero-ajudar/' },
+];
+
 export default function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   return (
     <View style={{ flex: 1, backgroundColor: '#5B2FBE' }}>
@@ -56,19 +76,21 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.menuClose} onPress={() => setMenuOpen(false)}>
             <Text style={styles.menuCloseText}>✕</Text>
           </TouchableOpacity>
-          {['HOME', 'QUEM SOMOS', 'ATIVIDADES', 'PROJETOS', 'UNIDADES', 'QUERO AJUDAR'].map(
-            (item) => (
+          {MENU_ITEMS.map((item) => (
               <TouchableOpacity
-                key={item}
+                key={item.label}
                 style={styles.menuItem}
                 onPress={() => {
                   setMenuOpen(false);
-                  Linking.openURL('https://movimentoprocrianca.org.br/v2/');
+                  if (item.action === 'navigate' && item.route) {
+                    router.push(item.route as any);
+                  } else if (item.url) {
+                    Linking.openURL(item.url);
+                  }
                 }}>
-                <Text style={styles.menuItemText}>{item}</Text>
+                <Text style={styles.menuItemText}>{item.label}</Text>
               </TouchableOpacity>
-            )
-          )}
+            ))}
         </View>
       )}
 
