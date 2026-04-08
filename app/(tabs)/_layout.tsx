@@ -9,13 +9,14 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: MPC.laranja,
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.5)',
+        tabBarActiveTintColor: '#00AAFF',
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.45)',
         tabBarStyle: {
-          backgroundColor: MPC.azulEscuro,
-          borderTopColor: 'rgba(255,255,255,0.1)',
-          height: 60,
+          backgroundColor: '#1A1A2E',
+          borderTopColor: 'rgba(255,255,255,0.08)',
+          height: 62,
           paddingBottom: 8,
+          paddingTop: 4,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -28,7 +29,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Início',
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="house.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="house.fill" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -36,7 +37,7 @@ export default function TabLayout() {
         options={{
           title: 'Explorar',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={26} name="paperplane.fill" color={color} />
+            <IconSymbol size={24} name="paperplane.fill" color={color} />
           ),
         }}
       />
