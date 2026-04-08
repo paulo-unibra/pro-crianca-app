@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MPC } from '@/constants/theme';
 
 const { width, height } = Dimensions.get('window');
-const HERO_HEIGHT = height * 0.52;
+const HERO_HEIGHT = height * 0.57;
 const STATUSBAR_HEIGHT = Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 24) : 44;
 
 function DecorativeShape() {
@@ -182,9 +182,12 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingHorizontal: 24,
     overflow: 'hidden',
+    justifyContent: 'space-between',
   },
   purpleContent: {
     zIndex: 2,
+    flex: 1,
+    justifyContent: 'space-between',
   },
   purpleOverline: {
     color: 'rgba(255,255,255,0.75)',
@@ -214,8 +217,6 @@ const styles = StyleSheet.create({
     maxWidth: '70%',
   },
   purpleCTA: {
-    marginTop: 16,
-    marginBottom: 16,
     backgroundColor: '#00AAFF',
     paddingHorizontal: 20,
     paddingVertical: 13,
