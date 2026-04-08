@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MPC } from '@/constants/theme';
 
 const { width, height } = Dimensions.get('window');
-const HERO_HEIGHT = height * 0.62;
+const HERO_HEIGHT = height * 0.52;
 const STATUSBAR_HEIGHT = Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 24) : 44;
 
 function DecorativeShape() {
@@ -77,11 +77,11 @@ export default function HomeScreen() {
         source={require('@/assets/images/hero-crianca.jpg')}
         style={styles.heroImage}
         resizeMode="cover">
-        <View style={styles.heroGradientTop} />
+        {/* <View style={styles.heroGradientTop} /> */}
       </ImageBackground>
 
       {/* Seção roxa */}
-      <View style={[styles.purpleSection, { paddingBottom: insets.bottom + 32 }]}>
+      <View style={[styles.purpleSection, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <DecorativeShape />
         <View style={styles.purpleContent}>
           <Text style={styles.purpleOverline}>SÃO MAIS DE</Text>
@@ -179,8 +179,7 @@ const styles = StyleSheet.create({
   purpleSection: {
     flex: 1,
     backgroundColor: '#5B2FBE',
-    paddingTop: 36,
-    paddingBottom: 44,
+    paddingTop: 24,
     paddingHorizontal: 24,
     overflow: 'hidden',
   },
@@ -189,39 +188,39 @@ const styles = StyleSheet.create({
   },
   purpleOverline: {
     color: 'rgba(255,255,255,0.75)',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     letterSpacing: 1.5,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   purpleStat: {
     color: MPC.branco,
-    fontSize: 64,
+    fontSize: 54,
     fontWeight: '900',
-    lineHeight: 68,
+    lineHeight: 58,
   },
   purpleStatSub: {
     color: MPC.branco,
-    fontSize: 48,
+    fontSize: 40,
     fontWeight: '700',
-    lineHeight: 52,
-    marginTop: -4,
+    lineHeight: 44,
+    marginTop: -2,
   },
   purpleDescription: {
     color: 'rgba(255,255,255,0.75)',
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 8,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 6,
     maxWidth: '70%',
   },
   purpleCTA: {
-    marginTop: 24,
+    marginTop: 16,
+    marginBottom: 16,
     backgroundColor: '#00AAFF',
     paddingHorizontal: 20,
     paddingVertical: 13,
     borderRadius: 30,
     alignSelf: 'flex-start',
-    marginBottom: 26,
   },
   purpleCTAText: {
     color: MPC.branco,
