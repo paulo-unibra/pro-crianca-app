@@ -39,10 +39,6 @@ type MenuItem = {
 
 const MENU_ITEMS: MenuItem[] = [
   { label: 'HOME', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
-  { label: 'QUEM SOMOS', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
-  { label: 'ATIVIDADES', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
-  { label: 'PROJETOS', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
-  { label: 'UNIDADES', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
   { label: 'CURSOS', action: 'navigate', route: '/cursos' },
   { label: 'QUERO AJUDAR', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/quero-ajudar/' },
 ];
