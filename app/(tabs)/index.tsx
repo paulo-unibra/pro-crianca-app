@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MPC } from '@/constants/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -28,6 +29,7 @@ function DecorativeShape() {
 
 export default function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={{ flex: 1, backgroundColor: '#5B2FBE' }}>
@@ -78,7 +80,7 @@ export default function HomeScreen() {
       </ImageBackground>
 
       {/* Seção roxa */}
-      <View style={styles.purpleSection}>
+      <View style={[styles.purpleSection, { paddingBottom: insets.bottom + 32 }]}>
         <DecorativeShape />
         <View style={styles.purpleContent}>
           <Text style={styles.purpleOverline}>SÃO MAIS DE</Text>
