@@ -1,41 +1,60 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Cores do Movimento Pró Criança
+ * Baseado na identidade visual do site movimentoprocrianca.org.br
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+export const MPC = {
+  azulEscuro: '#003F7D',
+  azulMedio: '#005BAA',
+  azulClaro: '#1976D2',
+  laranja: '#F7941D',
+  laranjaEscuro: '#E07A00',
+  verde: '#4CAF50',
+  branco: '#FFFFFF',
+  cinzaClaro: '#F5F5F5',
+  cinzaMedio: '#E0E0E0',
+  cinzaTexto: '#555555',
+  cinzaEscuro: '#333333',
+  preto: '#111111',
+};
+
+const tintColorLight = MPC.azulEscuro;
+const tintColorDark = MPC.laranja;
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: MPC.cinzaEscuro,
+    background: MPC.branco,
     tint: tintColorLight,
-    icon: '#687076',
+    icon: MPC.azulMedio,
     tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
+    cardBackground: MPC.cinzaClaro,
+    border: MPC.cinzaMedio,
+    primary: MPC.azulEscuro,
+    accent: MPC.laranja,
   },
   dark: {
     text: '#ECEDEE',
-    background: '#151718',
+    background: '#0a1628',
     tint: tintColorDark,
-    icon: '#9BA1A6',
+    icon: MPC.azulClaro,
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
+    cardBackground: '#1a2a3a',
+    border: '#2a3a4a',
+    primary: MPC.azulClaro,
+    accent: MPC.laranja,
   },
 };
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
