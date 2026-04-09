@@ -131,7 +131,7 @@ function CursoCard({
   selecionado: boolean;
   onPress: () => void;
 }) {
-  const cor = CATEGORIA_COR[curso.categoria] ?? '#5B2FBE';
+  const cor = CATEGORIA_COR[curso.categoria] ?? '#354FB8';
   return (
     <TouchableOpacity
       style={[styles.cursoCard, selecionado && { borderColor: cor, borderWidth: 2.5 }]}
@@ -423,7 +423,7 @@ export default function InscricaoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#5B2FBE',
+    backgroundColor: '#354FB8',
   },
 
   // ── Header ────────────────────────────────────
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   filtroChipTextAtivo: {
-    color: '#5B2FBE',
+    color: '#354FB8',
     fontWeight: '800',
   },
 
@@ -576,7 +576,7 @@ const styles = StyleSheet.create({
   footerBtn: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    backgroundColor: '#5B2FBE',
+    backgroundColor: '#354FB8',
   },
   btnPrimario: {
     backgroundColor: '#00AAFF',

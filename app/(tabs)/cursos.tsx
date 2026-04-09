@@ -28,7 +28,7 @@ import {
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const STATUSBAR_HEIGHT = Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 24) : 44;
-const ROXO = '#5B2FBE';
+const ROXO = '#354FB8';
 const CIANO = '#00AAFF';
 
 // ─── Tipos de step ────────────────────────────────────────────────────────────

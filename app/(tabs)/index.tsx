@@ -49,7 +49,7 @@ export default function HomeScreen() {
   const router = useRouter();
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#5B2FBE' }}>
+    <View style={{ flex: 1, backgroundColor: '#354FB8' }}>
       <StatusBar style="light" translucent />
 
       {/* Header flutuante */}
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#5B2FBE',
+    backgroundColor: '#354FB8',
     zIndex: 200,
     paddingTop: STATUSBAR_HEIGHT + 20,
     paddingHorizontal: 28,

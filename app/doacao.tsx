@@ -22,7 +22,7 @@ import { MPC } from '@/constants/theme';
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const STATUSBAR_HEIGHT = Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 24) : 44;
-const ROXO = '#5B2FBE';
+const ROXO = '#354FB8';
 const CIANO = '#00AAFF';
 const STORAGE_KEY = '@mpc_doacao_dados';
 
@@ -249,7 +249,7 @@ function TelaDados({
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         {/* Banner do método */}
-        <View style={[styles.metodoBanner, { backgroundColor: metodo === 'pix' ? '#00C896' : '#021DAA' }]}>
+        <View style={[styles.metodoBanner, { backgroundColor: metodo === 'pix' ? '#00C896' : '#354FB8' }]}>
           <Text style={styles.metodoBannerIcone}>{metodo === 'pix' ? '⚡' : '🏦'}</Text>
           <View>
             <Text style={styles.metodoBannerLabel}>DOAÇÃO VIA</Text>
@@ -373,7 +373,7 @@ function TelaCartao({
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         {/* Banner */}
-        <View style={[styles.metodoBanner, { backgroundColor: '#5B2FBE' }]}>
+        <View style={[styles.metodoBanner, { backgroundColor: '#354FB8' }]}>
           <Text style={styles.metodoBannerIcone}>💳</Text>
           <View>
             <Text style={styles.metodoBannerLabel}>DOAÇÃO VIA</Text>
@@ -544,7 +544,7 @@ function TelaConfirmacao({
       subtitulo: 'Escaneie o QR Code ou copie a chave abaixo para concluir sua doação.',
     },
     boleto: {
-      cor: '#021DAA',
+      cor: '#354FB8',
       icone: '🏦',
       titulo: 'Boleto gerado!',
       subtitulo: 'Pague o boleto até o vencimento no seu banco, lotérica ou app de pagamentos.',

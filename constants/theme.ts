@@ -6,8 +6,8 @@
 import { Platform } from 'react-native';
 
 export const MPC = {
-  azulEscuro: '#003F7D',
-  azulMedio: '#005BAA',
+  azulEscuro: '#354FB8',
+  azulMedio: '#354FB8',
   azulClaro: '#1976D2',
   laranja: '#F7941D',
   laranjaEscuro: '#E07A00',
