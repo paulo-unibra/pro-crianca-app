@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
 
   purpleSection: {
     flex: 1,
-    backgroundColor: '#5B2FBE',
+    backgroundColor: '#021DAA',
     paddingTop: 24,
     paddingHorizontal: 24,
     overflow: 'hidden',
