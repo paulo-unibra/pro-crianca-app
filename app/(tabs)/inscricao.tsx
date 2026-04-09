@@ -206,7 +206,7 @@ export default function InscricaoScreen() {
       <View style={[styles.container, { paddingBottom: insets.bottom + 24 }]}>
         <StatusBar style="light" translucent />
         <View style={styles.header}>
-          <Image source={require('@/assets/images/logo.png')} style={styles.logoImage} resizeMode="contain" />
+          <Image source={require('@/assets/images/logo-branca.png')} style={styles.logoImage} resizeMode="contain" />
         </View>
         <View style={styles.sucessoWrap}>
           <View style={styles.sucessoIcon}>
@@ -243,7 +243,7 @@ export default function InscricaoScreen() {
           <TouchableOpacity style={styles.backBtn} onPress={() => setStep('cursos')}>
             <Text style={styles.backBtnText}>← Voltar</Text>
           </TouchableOpacity>
-          <Image source={require('@/assets/images/logo.png')} style={styles.logoImage} resizeMode="contain" />
+          <Image source={require('@/assets/images/logo-branca.png')} style={styles.logoImage} resizeMode="contain" />
         </View>
 
         <ScrollView
@@ -348,7 +348,7 @@ export default function InscricaoScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Image source={require('@/assets/images/logo.png')} style={styles.logoImage} resizeMode="contain" />
+        <Image source={require('@/assets/images/logo-branca.png')} style={styles.logoImage} resizeMode="contain" />
       </View>
 
       {/* Título da tela */}

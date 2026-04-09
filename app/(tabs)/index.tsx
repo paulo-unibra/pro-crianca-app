@@ -40,7 +40,7 @@ type MenuItem = {
 const MENU_ITEMS: MenuItem[] = [
   { label: 'HOME', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
   { label: 'CURSOS', action: 'navigate', route: '/cursos' },
-  { label: 'QUERO AJUDAR', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/quero-ajudar/' },
+  { label: 'QUERO AJUDAR', action: 'navigate', route: '/doacao' },
 ];
 
 export default function HomeScreen() {
@@ -55,7 +55,7 @@ export default function HomeScreen() {
       {/* Header flutuante */}
       <View style={styles.floatingHeader} pointerEvents="box-none">
         <Image
-          source={require('@/assets/images/logo.png')}
+          source={require('@/assets/images/logo-branca.png')}
           style={styles.logoImage}
           resizeMode="contain"
         />
@@ -110,9 +110,7 @@ export default function HomeScreen() {
           </Text>
           <TouchableOpacity
             style={styles.purpleCTA}
-            onPress={() =>
-              Linking.openURL('https://movimentoprocrianca.org.br/v2/quero-ajudar/')
-            }>
+            onPress={() => router.push('/doacao' as any)}>
             <Text style={styles.purpleCTAText}>QUERO AJUDAR MAIS CRIANÇAS</Text>
           </TouchableOpacity>
         </View>
@@ -196,7 +194,7 @@ const styles = StyleSheet.create({
 
   purpleSection: {
     flex: 1,
-    backgroundColor: '#021DAA',
+    backgroundColor: '#354FB8',
     paddingTop: 24,
     paddingHorizontal: 24,
     overflow: 'hidden',
