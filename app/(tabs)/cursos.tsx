@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Platform,
   StatusBar as RNStatusBar,
   KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,24 +17,29 @@ import { useRouter } from 'expo-router';
 import { MPC } from '@/constants/theme';
 import {
   useInscricoes,
-  CURSOS,
-  UNIDADES,
-  TURNOS,
-  Curso,
-  Unidade,
-  Turno,
-  Inscricao,
+  type Curso,
+  type Unidade,
+  type Turno,
+  type Inscricao,
+  type DadosInscricao,
+  shiftLabel,
+  formatTurnoHorario,
 } from '@/contexts/InscricoesContext';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const STATUSBAR_HEIGHT = Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 24) : 44;
 const ROXO = '#354FB8';
 const CIANO = '#00AAFF';
 
 // ─── Tipos de step ────────────────────────────────────────────────────────────
 
-type Step = 'lista' | 'selecionarCurso' | 'selecionarUnidade' | 'selecionarTurno' | 'dados' | 'protocolo';
+type Step =
+  | 'lista'
+  | 'selecionarCurso'
+  | 'selecionarUnidade'
+  | 'selecionarTurno'
+  | 'dados'
+  | 'protocolo';
 
 // ─── Componente Header ────────────────────────────────────────────────────────
 
@@ -42,7 +48,11 @@ function Header({ titulo, onBack }: { titulo: string; onBack?: () => void }) {
   return (
     <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
       {onBack ? (
-        <TouchableOpacity onPress={onBack} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity
+          onPress={onBack}
+          style={styles.backBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
       ) : (
@@ -74,6 +84,31 @@ function StatusBadge({ status }: { status: Inscricao['status'] }) {
   );
 }
 
+// ─── Loading / Erro genérico ──────────────────────────────────────────────────
+
+function LoadingBox({ mensagem }: { mensagem?: string }) {
+  return (
+    <View style={styles.centeredBox}>
+      <ActivityIndicator size="large" color={ROXO} />
+      {mensagem && <Text style={styles.loadingText}>{mensagem}</Text>}
+    </View>
+  );
+}
+
+function ErroBox({ mensagem, onRetry }: { mensagem: string; onRetry?: () => void }) {
+  return (
+    <View style={styles.centeredBox}>
+      <Text style={styles.erroIcone}>⚠️</Text>
+      <Text style={styles.erroTexto}>{mensagem}</Text>
+      {onRetry && (
+        <TouchableOpacity style={styles.btnRetry} onPress={onRetry}>
+          <Text style={styles.btnRetryText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 // ─── Tela: Lista de inscrições ────────────────────────────────────────────────
 
 function TelaLista({ onNova }: { onNova: () => void }) {
@@ -86,39 +121,46 @@ function TelaLista({ onNova }: { onNova: () => void }) {
       <Header titulo="MEUS CURSOS" onBack={() => router.push('/')} />
       <ScrollView
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 24 }]}
-        showsVerticalScrollIndicator={false}>
-        {/* Botão nova pré-inscrição */}
+        showsVerticalScrollIndicator={false}
+      >
         <TouchableOpacity style={styles.btnNova} onPress={onNova}>
           <Text style={styles.btnNovaPlus}>+</Text>
           <Text style={styles.btnNovaText}>NOVA PRÉ-INSCRIÇÃO</Text>
         </TouchableOpacity>
 
-        {/* Lista */}
         {inscricoes.length === 0 ? (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyIcon}>📋</Text>
             <Text style={styles.emptyText}>Nenhuma inscrição ainda.</Text>
-            <Text style={styles.emptySubtext}>Clique acima para iniciar uma pré-inscrição.</Text>
+            <Text style={styles.emptySubtext}>
+              Clique acima para iniciar uma pré-inscrição.
+            </Text>
           </View>
         ) : (
           inscricoes.map((item) => (
             <View key={item.id} style={styles.card}>
               <View style={styles.cardHeader}>
-                <Text style={styles.cardIcone}>{item.curso.icone}</Text>
+                <View style={styles.cardIconeBox}>
+                  <Text style={styles.cardIcone}>📚</Text>
+                </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.cardCurso}>{item.curso.nome}</Text>
-                  <Text style={styles.cardUnidade}>{item.unidade.nome}</Text>
+                  <Text style={styles.cardCurso}>{item.curso.title}</Text>
+                  <Text style={styles.cardUnidade}>{item.unidade.name}</Text>
                 </View>
                 <StatusBadge status={item.status} />
               </View>
               <View style={styles.cardDivider} />
               <View style={styles.cardRow}>
                 <Text style={styles.cardLabel}>Turno</Text>
-                <Text style={styles.cardValue}>{item.turno.label} · {item.turno.horario}</Text>
+                <Text style={styles.cardValue}>
+                  {shiftLabel[item.turno.shift]} · {formatTurnoHorario(item.turno)}
+                </Text>
               </View>
               <View style={styles.cardRow}>
                 <Text style={styles.cardLabel}>Protocolo</Text>
-                <Text style={[styles.cardValue, { color: ROXO, fontWeight: '700' }]}>{item.protocolo}</Text>
+                <Text style={[styles.cardValue, { color: ROXO, fontWeight: '700' }]}>
+                  {item.protocolo}
+                </Text>
               </View>
               <View style={styles.cardRow}>
                 <Text style={styles.cardLabel}>Data</Text>
@@ -141,24 +183,45 @@ function TelaEscolherCurso({
   onBack: () => void;
   onSelect: (c: Curso) => void;
 }) {
+  const { cursos, loadingCursos, errorCursos, recarregarCursos } = useInscricoes();
   const insets = useSafeAreaInsets();
+
   return (
     <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
       <Header titulo="ESCOLHA O CURSO" onBack={onBack} />
       <ScrollView
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 24 }]}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.stepLabel}>Passo 1 de 4 — Curso</Text>
-        {CURSOS.map((curso) => (
-          <TouchableOpacity key={curso.id} style={styles.optionCard} onPress={() => onSelect(curso)}>
-            <Text style={styles.optionIcon}>{curso.icone}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.optionTitle}>{curso.nome}</Text>
-              <Text style={styles.optionDesc}>{curso.descricao}</Text>
-            </View>
-            <Text style={styles.optionArrow}>›</Text>
-          </TouchableOpacity>
-        ))}
+
+        {loadingCursos ? (
+          <LoadingBox mensagem="Carregando cursos..." />
+        ) : errorCursos ? (
+          <ErroBox mensagem={errorCursos} onRetry={recarregarCursos} />
+        ) : cursos.length === 0 ? (
+          <ErroBox mensagem="Nenhum curso disponível no momento." onRetry={recarregarCursos} />
+        ) : (
+          cursos.map((curso) => (
+            <TouchableOpacity
+              key={curso.id}
+              style={styles.optionCard}
+              onPress={() => onSelect(curso)}
+            >
+              <Text style={styles.optionIcon}>📚</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.optionTitle}>{curso.title}</Text>
+                {curso.description ? (
+                  <Text style={styles.optionDesc}>{curso.description}</Text>
+                ) : null}
+                {curso.workload ? (
+                  <Text style={styles.optionMeta}>Carga horária: {curso.workload}h</Text>
+                ) : null}
+              </View>
+              <Text style={styles.optionArrow}>›</Text>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -167,30 +230,79 @@ function TelaEscolherCurso({
 // ─── Tela: Selecionar unidade ─────────────────────────────────────────────────
 
 function TelaEscolherUnidade({
+  curso,
   onBack,
   onSelect,
 }: {
+  curso: Curso;
   onBack: () => void;
   onSelect: (u: Unidade) => void;
 }) {
+  const { unidadesDoCurso } = useInscricoes();
   const insets = useSafeAreaInsets();
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const carregar = async () => {
+    setLoading(true);
+    setErro(null);
+    try {
+      const data = await unidadesDoCurso(curso.id);
+      setUnidades(data);
+    } catch {
+      setErro('Não foi possível carregar as unidades.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    carregar();
+  }, [curso.id]);
+
   return (
     <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
       <Header titulo="ESCOLHA A UNIDADE" onBack={onBack} />
       <ScrollView
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 24 }]}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.stepLabel}>Passo 2 de 4 — Unidade</Text>
-        {UNIDADES.map((unidade) => (
-          <TouchableOpacity key={unidade.id} style={styles.optionCard} onPress={() => onSelect(unidade)}>
-            <Text style={styles.optionIcon}>📍</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.optionTitle}>{unidade.nome}</Text>
-              <Text style={styles.optionDesc}>{unidade.endereco} · {unidade.bairro}</Text>
-            </View>
-            <Text style={styles.optionArrow}>›</Text>
-          </TouchableOpacity>
-        ))}
+        <Text style={styles.subStepInfo}>Curso: {curso.title}</Text>
+
+        {loading ? (
+          <LoadingBox mensagem="Carregando unidades..." />
+        ) : erro ? (
+          <ErroBox mensagem={erro} onRetry={carregar} />
+        ) : unidades.length === 0 ? (
+          <ErroBox mensagem="Nenhuma unidade oferece este curso no momento." onRetry={carregar} />
+        ) : (
+          unidades.map((unidade) => (
+            <TouchableOpacity
+              key={unidade.id}
+              style={styles.optionCard}
+              onPress={() => onSelect(unidade)}
+            >
+              <Text style={styles.optionIcon}>📍</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.optionTitle}>{unidade.name}</Text>
+                {unidade.address || unidade.neighborhood ? (
+                  <Text style={styles.optionDesc}>
+                    {[unidade.address, unidade.neighborhood].filter(Boolean).join(' · ')}
+                  </Text>
+                ) : null}
+                {unidade.city ? (
+                  <Text style={styles.optionMeta}>{unidade.city}</Text>
+                ) : null}
+                {unidade.phone ? (
+                  <Text style={styles.optionMeta}>Tel: {unidade.phone}</Text>
+                ) : null}
+              </View>
+              <Text style={styles.optionArrow}>›</Text>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -198,33 +310,84 @@ function TelaEscolherUnidade({
 
 // ─── Tela: Selecionar turno ───────────────────────────────────────────────────
 
+const shiftEmoji: Record<Turno['shift'], string> = {
+  manha: '🌅',
+  tarde: '☀️',
+  noite: '🌙',
+};
+
 function TelaEscolherTurno({
+  curso,
+  unidade,
   onBack,
   onSelect,
 }: {
+  curso: Curso;
+  unidade: Unidade;
   onBack: () => void;
   onSelect: (t: Turno) => void;
 }) {
+  const { turnosDoCursoNaUnidade } = useInscricoes();
   const insets = useSafeAreaInsets();
+  const [turnos, setTurnos] = useState<Turno[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const carregar = async () => {
+    setLoading(true);
+    setErro(null);
+    try {
+      const data = await turnosDoCursoNaUnidade(curso.id, unidade.id);
+      setTurnos(data);
+    } catch {
+      setErro('Não foi possível carregar os turnos.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    carregar();
+  }, [curso.id, unidade.id]);
+
   return (
     <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
       <Header titulo="ESCOLHA O TURNO" onBack={onBack} />
       <ScrollView
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 24 }]}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.stepLabel}>Passo 3 de 4 — Turno</Text>
-        {TURNOS.map((turno) => (
-          <TouchableOpacity key={turno.id} style={styles.optionCard} onPress={() => onSelect(turno)}>
-            <Text style={styles.optionIcon}>
-              {turno.id === 'manha' ? '🌅' : turno.id === 'tarde' ? '☀️' : '🌙'}
-            </Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.optionTitle}>{turno.label}</Text>
-              <Text style={styles.optionDesc}>{turno.horario}</Text>
-            </View>
-            <Text style={styles.optionArrow}>›</Text>
-          </TouchableOpacity>
-        ))}
+        <Text style={styles.subStepInfo}>
+          {curso.title} · {unidade.name}
+        </Text>
+
+        {loading ? (
+          <LoadingBox mensagem="Carregando turnos..." />
+        ) : erro ? (
+          <ErroBox mensagem={erro} onRetry={carregar} />
+        ) : turnos.length === 0 ? (
+          <ErroBox mensagem="Nenhum turno disponível para esta combinação." onRetry={carregar} />
+        ) : (
+          turnos.map((turno) => (
+            <TouchableOpacity
+              key={turno.id}
+              style={styles.optionCard}
+              onPress={() => onSelect(turno)}
+            >
+              <Text style={styles.optionIcon}>{shiftEmoji[turno.shift]}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.optionTitle}>{shiftLabel[turno.shift]}</Text>
+                <Text style={styles.optionDesc}>{formatTurnoHorario(turno)}</Text>
+                {turno.description ? (
+                  <Text style={styles.optionMeta}>{turno.description}</Text>
+                ) : null}
+                <Text style={styles.optionVagas}>{turno.max_students} vagas disponíveis</Text>
+              </View>
+              <Text style={styles.optionArrow}>›</Text>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -235,14 +398,22 @@ function TelaEscolherTurno({
 function TelaDados({
   onBack,
   onConfirmar,
+  enviando,
+  erroEnvio,
 }: {
   onBack: () => void;
-  onConfirmar: (nome: string, cpf: string, telefone: string) => void;
+  onConfirmar: (nome: string, cpf: string, telefone: string, senha: string) => void;
+  enviando: boolean;
+  erroEnvio: string | null;
 }) {
   const insets = useSafeAreaInsets();
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [senha, setSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
   const [erro, setErro] = useState('');
 
   function formatCpf(text: string) {
@@ -265,19 +436,23 @@ function TelaDados({
     if (!nome.trim()) return setErro('Informe o nome completo.');
     if (cpf.replace(/\D/g, '').length < 11) return setErro('CPF inválido.');
     if (telefone.replace(/\D/g, '').length < 10) return setErro('Telefone inválido.');
+    if (senha.length > 0 && senha.length < 6) return setErro('A senha deve ter pelo menos 6 caracteres.');
+    if (senha !== confirmarSenha) return setErro('As senhas não coincidem.');
     setErro('');
-    onConfirmar(nome.trim(), cpf, telefone);
+    onConfirmar(nome.trim(), cpf, telefone, senha);
   }
 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: '#F5F5F5' }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <Header titulo="DADOS PESSOAIS" onBack={onBack} />
       <ScrollView
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 40 }]}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.stepLabel}>Passo 4 de 4 — Seus dados</Text>
 
         <Text style={styles.inputLabel}>Nome completo *</Text>
@@ -310,10 +485,70 @@ function TelaDados({
           keyboardType="phone-pad"
         />
 
-        {erro ? <Text style={styles.erroText}>{erro}</Text> : null}
+        {/* ── Seção de senha ─────────────────────────────────────── */}
+        <View style={styles.senhaSecao}>
+          <Text style={styles.senhaTitulo}>Criar acesso (opcional)</Text>
+          <Text style={styles.senhaSubtitulo}>
+            Cadastre uma senha para acompanhar suas inscrições pelo app futuramente.
+          </Text>
+        </View>
 
-        <TouchableOpacity style={styles.btnConfirmar} onPress={handleConfirmar}>
-          <Text style={styles.btnConfirmarText}>CONFIRMAR PRÉ-INSCRIÇÃO</Text>
+        <Text style={styles.inputLabel}>Senha</Text>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            value={senha}
+            onChangeText={setSenha}
+            placeholder="Mínimo 6 caracteres"
+            placeholderTextColor="#aaa"
+            secureTextEntry={!mostrarSenha}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TouchableOpacity
+            style={styles.olhoBtn}
+            onPress={() => setMostrarSenha((v) => !v)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.olhoIcone}>{mostrarSenha ? '🙈' : '👁️'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.inputLabel}>Confirmar senha</Text>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            value={confirmarSenha}
+            onChangeText={setConfirmarSenha}
+            placeholder="Repita a senha"
+            placeholderTextColor="#aaa"
+            secureTextEntry={!mostrarConfirmar}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TouchableOpacity
+            style={styles.olhoBtn}
+            onPress={() => setMostrarConfirmar((v) => !v)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.olhoIcone}>{mostrarConfirmar ? '🙈' : '👁️'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {(erro || erroEnvio) ? (
+          <Text style={styles.erroText}>{erro || erroEnvio}</Text>
+        ) : null}
+
+        <TouchableOpacity
+          style={[styles.btnConfirmar, enviando && { opacity: 0.6 }]}
+          onPress={handleConfirmar}
+          disabled={enviando}
+        >
+          {enviando ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.btnConfirmarText}>CONFIRMAR PRÉ-INSCRIÇÃO</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -338,8 +573,8 @@ function TelaProtocolo({
           styles.protocoloContent,
           { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 },
         ]}
-        showsVerticalScrollIndicator={false}>
-        {/* Ícone de sucesso */}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.protocoloIconBox}>
           <Text style={styles.protocoloIconText}>✓</Text>
         </View>
@@ -353,9 +588,15 @@ function TelaProtocolo({
 
         <View style={styles.protocoloResumo}>
           <Text style={styles.protocoloResumoTitulo}>Resumo</Text>
-          <Row label="Curso" value={`${inscricao.curso.icone} ${inscricao.curso.nome}`} />
-          <Row label="Unidade" value={inscricao.unidade.nome} />
-          <Row label="Turno" value={`${inscricao.turno.label} · ${inscricao.turno.horario}`} />
+          <Row label="Curso" value={inscricao.curso.title} />
+          <Row label="Unidade" value={inscricao.unidade.name} />
+          <Row
+            label="Turno"
+            value={`${shiftLabel[inscricao.turno.shift]} · ${formatTurnoHorario(inscricao.turno)}`}
+          />
+          {inscricao.turno.description ? (
+            <Row label="Obs." value={inscricao.turno.description} />
+          ) : null}
           <Row label="Aluno" value={inscricao.nomeAluno} />
           <Row label="CPF" value={inscricao.cpf} />
           <Row label="Telefone" value={inscricao.telefone} />
@@ -364,7 +605,7 @@ function TelaProtocolo({
         <View style={styles.protocoloOrientacao}>
           <Text style={styles.protocoloOrientacaoTitulo}>⚠️ Próximo passo</Text>
           <Text style={styles.protocoloOrientacaoTexto}>
-            Compareça à {inscricao.unidade.nome} com os seguintes documentos para confirmar sua
+            Compareça à {inscricao.unidade.name} com os seguintes documentos para confirmar sua
             matrícula:
           </Text>
           <Text style={styles.protocoloDoc}>• RG ou certidão de nascimento</Text>
@@ -372,8 +613,9 @@ function TelaProtocolo({
           <Text style={styles.protocoloDoc}>• Comprovante de residência</Text>
           <Text style={styles.protocoloDoc}>• Foto 3x4 recente</Text>
           <Text style={[styles.protocoloOrientacaoTexto, { marginTop: 10 }]}>
-            Informe o protocolo <Text style={{ fontWeight: '800' }}>{inscricao.protocolo}</Text> no
-            balcão de atendimento.
+            Informe o protocolo{' '}
+            <Text style={{ fontWeight: '800' }}>{inscricao.protocolo}</Text> no balcão de
+            atendimento.
           </Text>
         </View>
 
@@ -397,7 +639,8 @@ function Row({ label, value }: { label: string; value: string }) {
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function CursosScreen() {
-  const { adicionarInscricao } = useInscricoes();
+  const { adicionarInscricao, enviando, erroEnvio } = useInscricoes();
+
   const [step, setStep] = useState<Step>('lista');
   const [cursoSel, setCursoSel] = useState<Curso | null>(null);
   const [unidadeSel, setUnidadeSel] = useState<Unidade | null>(null);
@@ -411,18 +654,23 @@ export default function CursosScreen() {
     setInscricaoFinal(null);
   }
 
-  function handleConfirmarDados(nome: string, cpf: string, telefone: string) {
+  async function handleConfirmarDados(nome: string, cpf: string, telefone: string, senha: string) {
     if (!cursoSel || !unidadeSel || !turnoSel) return;
-    const nova = adicionarInscricao({
-      curso: cursoSel,
-      unidade: unidadeSel,
-      turno: turnoSel,
-      nomeAluno: nome,
-      cpf,
-      telefone,
-    });
-    setInscricaoFinal(nova);
-    setStep('protocolo');
+    try {
+      const nova = await adicionarInscricao({
+        curso: cursoSel,
+        unidade: unidadeSel,
+        turno: turnoSel,
+        nomeAluno: nome,
+        cpf,
+        telefone,
+        senha: senha || undefined,
+      });
+      setInscricaoFinal(nova);
+      setStep('protocolo');
+    } catch {
+      // O erro já está em erroEnvio no context — TelaDados o exibe
+    }
   }
 
   switch (step) {
@@ -450,6 +698,7 @@ export default function CursosScreen() {
     case 'selecionarUnidade':
       return (
         <TelaEscolherUnidade
+          curso={cursoSel!}
           onBack={() => setStep('selecionarCurso')}
           onSelect={(u) => {
             setUnidadeSel(u);
@@ -461,6 +710,8 @@ export default function CursosScreen() {
     case 'selecionarTurno':
       return (
         <TelaEscolherTurno
+          curso={cursoSel!}
+          unidade={unidadeSel!}
           onBack={() => setStep('selecionarUnidade')}
           onSelect={(t) => {
             setTurnoSel(t);
@@ -474,6 +725,8 @@ export default function CursosScreen() {
         <TelaDados
           onBack={() => setStep('selecionarTurno')}
           onConfirmar={handleConfirmarDados}
+          enviando={enviando}
+          erroEnvio={erroEnvio}
         />
       );
 
@@ -510,11 +763,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backArrow: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '300',
-  },
+  backArrow: { color: '#fff', fontSize: 24, fontWeight: '300' },
   headerTitle: {
     color: '#fff',
     fontSize: 15,
@@ -523,10 +772,7 @@ const styles = StyleSheet.create({
   },
 
   // Lista
-  listContent: {
-    padding: 16,
-    gap: 12,
-  },
+  listContent: { padding: 16, gap: 12 },
   btnNova: {
     backgroundColor: ROXO,
     borderRadius: 12,
@@ -536,18 +782,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  btnNovaPlus: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '300',
-    lineHeight: 24,
-  },
-  btnNovaText: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 13,
-    letterSpacing: 0.8,
-  },
+  btnNovaPlus: { color: '#fff', fontSize: 22, fontWeight: '300', lineHeight: 24 },
+  btnNovaText: { color: '#fff', fontWeight: '800', fontSize: 13, letterSpacing: 0.8 },
 
   // Card de inscrição
   card: {
@@ -561,39 +797,21 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  cardHeader: {
-    flexDirection: 'row',
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  cardIconeBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#EEF1FB',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
   },
-  cardIcone: {
-    fontSize: 26,
-  },
-  cardCurso: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  cardUnidade: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  cardDivider: {
-    height: 1,
-    backgroundColor: '#f0f0f0',
-    marginVertical: 4,
-  },
-  cardRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardLabel: {
-    fontSize: 12,
-    color: '#888',
-    fontWeight: '500',
-  },
+  cardIcone: { fontSize: 22 },
+  cardCurso: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
+  cardUnidade: { fontSize: 12, color: '#666', marginTop: 2 },
+  cardDivider: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 4 },
+  cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardLabel: { fontSize: 12, color: '#888', fontWeight: '500' },
   cardValue: {
     fontSize: 12,
     color: '#333',
@@ -602,46 +820,45 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     marginLeft: 8,
   },
-  badge: {
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
+  badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
 
   // Empty state
-  emptyBox: {
-    alignItems: 'center',
-    paddingTop: 48,
-    gap: 8,
-  },
-  emptyIcon: {
-    fontSize: 44,
-  },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  emptySubtext: {
-    fontSize: 13,
-    color: '#888',
-    textAlign: 'center',
-  },
+  emptyBox: { alignItems: 'center', paddingTop: 48, gap: 8 },
+  emptyIcon: { fontSize: 44 },
+  emptyText: { fontSize: 16, fontWeight: '600', color: '#333' },
+  emptySubtext: { fontSize: 13, color: '#888', textAlign: 'center' },
 
-  // Opções (curso / unidade / turno)
+  // Loading / Erro
+  centeredBox: { alignItems: 'center', paddingTop: 48, gap: 12 },
+  loadingText: { fontSize: 14, color: '#666', marginTop: 4 },
+  erroIcone: { fontSize: 36 },
+  erroTexto: { fontSize: 14, color: '#555', textAlign: 'center', paddingHorizontal: 16 },
+  btnRetry: {
+    backgroundColor: ROXO,
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginTop: 4,
+  },
+  btnRetryText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+  // Step info
   stepLabel: {
     fontSize: 12,
     color: '#888',
     fontWeight: '600',
     letterSpacing: 0.5,
-    marginBottom: 4,
+    marginBottom: 2,
   },
+  subStepInfo: {
+    fontSize: 13,
+    color: ROXO,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+
+  // Opções (curso / unidade / turno)
   optionCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -655,24 +872,17 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
-  optionIcon: {
-    fontSize: 26,
-  },
-  optionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  optionDesc: {
-    fontSize: 12,
-    color: '#666',
+  optionIcon: { fontSize: 26 },
+  optionTitle: { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
+  optionDesc: { fontSize: 12, color: '#666', marginTop: 3 },
+  optionMeta: { fontSize: 11, color: '#999', marginTop: 2, fontStyle: 'italic' },
+  optionVagas: {
+    fontSize: 11,
+    color: '#22C55E',
+    fontWeight: '600',
     marginTop: 3,
   },
-  optionArrow: {
-    fontSize: 22,
-    color: '#bbb',
-    fontWeight: '300',
-  },
+  optionArrow: { fontSize: 22, color: '#bbb', fontWeight: '300' },
 
   // Dados pessoais
   inputLabel: {
@@ -693,12 +903,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
-  erroText: {
-    color: '#EF4444',
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 4,
+  erroText: { color: '#EF4444', fontSize: 13, fontWeight: '600', marginTop: 4 },
+
+  // Seção de senha
+  senhaSecao: {
+    marginTop: 16,
+    marginBottom: 4,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
   },
+  senhaTitulo: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 4,
+  },
+  senhaSubtitulo: {
+    fontSize: 12,
+    color: '#888',
+    lineHeight: 17,
+    marginBottom: 4,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  olhoBtn: {
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+  },
+  olhoIcone: {
+    fontSize: 18,
+  },
+
   btnConfirmar: {
     backgroundColor: ROXO,
     borderRadius: 12,
@@ -706,18 +945,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 24,
   },
-  btnConfirmarText: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 13,
-    letterSpacing: 0.8,
-  },
+  btnConfirmarText: { color: '#fff', fontWeight: '800', fontSize: 13, letterSpacing: 0.8 },
 
   // Protocolo
-  protocoloContent: {
-    paddingHorizontal: 24,
-    alignItems: 'center',
-  },
+  protocoloContent: { paddingHorizontal: 24, alignItems: 'center' },
   protocoloIconBox: {
     width: 72,
     height: 72,
@@ -727,11 +958,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 20,
   },
-  protocoloIconText: {
-    color: '#fff',
-    fontSize: 36,
-    fontWeight: '800',
-  },
+  protocoloIconText: { color: '#fff', fontSize: 36, fontWeight: '800' },
   protocoloTitulo: {
     color: '#fff',
     fontSize: 28,
@@ -756,12 +983,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 6,
   },
-  protocoloNumero: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-  },
+  protocoloNumero: { color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: 1.5 },
   protocoloResumo: {
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: 12,
@@ -783,11 +1005,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 8,
   },
-  rowLabel: {
-    color: 'rgba(255,255,255,0.65)',
-    fontSize: 12,
-    fontWeight: '500',
-  },
+  rowLabel: { color: 'rgba(255,255,255,0.65)', fontSize: 12, fontWeight: '500' },
   rowValue: {
     color: '#fff',
     fontSize: 12,
@@ -829,10 +1047,5 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignSelf: 'center',
   },
-  btnVoltarText: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 13,
-    letterSpacing: 0.5,
-  },
+  btnVoltarText: { color: '#fff', fontWeight: '800', fontSize: 13, letterSpacing: 0.5 },
 });

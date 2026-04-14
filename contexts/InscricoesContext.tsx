@@ -1,25 +1,57 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from 'react';
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// ─── URL base da API ───────────────────────────────────────────────────────────
+// Ajuste para o endereço do seu servidor Laravel
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8000/api';
+
+// Fetch com timeout para evitar loading infinito quando o servidor não responde
+async function fetchComTimeout(url: string, options?: RequestInit, timeoutMs = 10000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } catch (e: any) {
+    if (e.name === 'AbortError') {
+      throw new Error('Tempo de conexão esgotado. Verifique se o servidor está acessível.');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ─── Tipos ─────────────────────────────────────────────────────────────────────
 
 export type Curso = {
-  id: string;
-  nome: string;
-  descricao: string;
-  icone: string; // emoji
+  id: number;
+  title: string;
+  description: string | null;
+  workload: number | null;
 };
 
 export type Unidade = {
-  id: string;
-  nome: string;
-  endereco: string;
-  bairro: string;
+  id: number;
+  name: string;
+  address: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  phone: string | null;
 };
 
 export type Turno = {
-  id: string;
-  label: string;
-  horario: string;
+  id: number;
+  shift: 'manha' | 'tarde' | 'noite';
+  description: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  max_students: number;
 };
 
 export type StatusInscricao = 'pendente' | 'confirmada' | 'cancelada';
@@ -37,83 +69,100 @@ export type Inscricao = {
   status: StatusInscricao;
 };
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+// Dados extras passados ao adicionarInscricao mas não armazenados no objeto Inscricao
+export type DadosInscricao = Omit<Inscricao, 'id' | 'protocolo' | 'dataInscricao' | 'status'> & {
+  senha?: string;
+};
 
-export const CURSOS: Curso[] = [
-  {
-    id: 'prog-web',
-    nome: 'Programador Web',
-    descricao: 'HTML, CSS, JavaScript e fundamentos do desenvolvimento web',
-    icone: '💻',
-  },
-  {
-    id: 'arduino',
-    nome: 'Arduino',
-    descricao: 'Eletrônica básica e programação de microcontroladores',
-    icone: '🔧',
-  },
-  {
-    id: 'web-designer',
-    nome: 'Web Designer',
-    descricao: 'Design visual, UX/UI e ferramentas de criação digital',
-    icone: '🎨',
-  },
-];
+// ─── Helpers ────────────────────────────────────────────────────────────────────
 
-export const UNIDADES: Unidade[] = [
-  {
-    id: 'centro',
-    nome: 'Unidade Centro',
-    endereco: 'Rua das Flores, 123',
-    bairro: 'Centro',
-  },
-  {
-    id: 'norte',
-    nome: 'Unidade Norte',
-    endereco: 'Av. Principal, 456',
-    bairro: 'Bairro Norte',
-  },
-  {
-    id: 'sul',
-    nome: 'Unidade Sul',
-    endereco: 'Rua da Paz, 789',
-    bairro: 'Bairro Sul',
-  },
-];
+export const shiftLabel: Record<Turno['shift'], string> = {
+  manha: 'Manhã',
+  tarde: 'Tarde',
+  noite: 'Noite',
+};
 
-export const TURNOS: Turno[] = [
-  { id: 'manha', label: 'Manhã', horario: '08h00 – 11h30' },
-  { id: 'tarde', label: 'Tarde', horario: '13h00 – 16h30' },
-  { id: 'noite', label: 'Noite', horario: '18h30 – 21h30' },
-];
+export function formatTurnoHorario(turno: Turno): string {
+  if (turno.start_time && turno.end_time) {
+    return `${turno.start_time} – ${turno.end_time}`;
+  }
+  return shiftLabel[turno.shift];
+}
 
-// Inscrições mock iniciais (já existentes para o usuário)
-const INSCRICOES_MOCK: Inscricao[] = [
-  {
-    id: '1',
-    protocolo: 'MPC-2024-00123',
-    curso: CURSOS[0],
-    unidade: UNIDADES[0],
-    turno: TURNOS[1],
-    nomeAluno: 'João Silva',
-    cpf: '123.456.789-00',
-    telefone: '(11) 98765-4321',
-    dataInscricao: '2024-03-15',
-    status: 'pendente',
-  },
-];
-
-// ─── Context ──────────────────────────────────────────────────────────────────
+// ─── Context ───────────────────────────────────────────────────────────────────
 
 type InscricoesContextType = {
+  // Dados da API
+  cursos: Curso[];
+  loadingCursos: boolean;
+  errorCursos: string | null;
+  recarregarCursos: () => void;
+
+  unidadesDoCurso: (cursoId: number) => Promise<Unidade[]>;
+  turnosDoCursoNaUnidade: (cursoId: number, unitId: number) => Promise<Turno[]>;
+
+  // Inscrições locais (geradas no device após envio)
   inscricoes: Inscricao[];
-  adicionarInscricao: (dados: Omit<Inscricao, 'id' | 'protocolo' | 'dataInscricao' | 'status'>) => Inscricao;
+  adicionarInscricao: (dados: DadosInscricao) => Promise<Inscricao>;
+
+  // Token Sanctum obtido ao criar conta na inscrição
+  authToken: string | null;
+
+  // Estado de envio
+  enviando: boolean;
+  erroEnvio: string | null;
 };
 
 const InscricoesContext = createContext<InscricoesContextType | null>(null);
 
 export function InscricoesProvider({ children }: { children: React.ReactNode }) {
-  const [inscricoes, setInscricoes] = useState<Inscricao[]>(INSCRICOES_MOCK);
+  const [cursos, setCursos] = useState<Curso[]>([]);
+  const [loadingCursos, setLoadingCursos] = useState(false);
+  const [errorCursos, setErrorCursos] = useState<string | null>(null);
+
+  const [inscricoes, setInscricoes] = useState<Inscricao[]>([]);
+  const [enviando, setEnviando] = useState(false);
+  const [erroEnvio, setErroEnvio] = useState<string | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+
+  // ── Carrega lista de cursos ──────────────────────────────────────────────────
+
+  const carregarCursos = useCallback(async () => {
+    setLoadingCursos(true);
+    setErrorCursos(null);
+    try {
+      const res = await fetchComTimeout(`${API_BASE_URL}/courses`);
+      if (!res.ok) throw new Error(`Erro ${res.status}`);
+      const data: Curso[] = await res.json();
+      setCursos(data);
+    } catch (e: any) {
+      setErrorCursos('Não foi possível carregar os cursos. Verifique sua conexão.');
+    } finally {
+      setLoadingCursos(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    carregarCursos();
+  }, [carregarCursos]);
+
+  // ── Busca unidades de um curso ───────────────────────────────────────────────
+
+  async function unidadesDoCurso(cursoId: number): Promise<Unidade[]> {
+    const res = await fetchComTimeout(`${API_BASE_URL}/courses/${cursoId}/units`);
+    if (!res.ok) throw new Error(`Erro ${res.status}`);
+    return res.json();
+  }
+
+  // ── Busca turnos de um curso em uma unidade ──────────────────────────────────
+
+  async function turnosDoCursoNaUnidade(cursoId: number, unitId: number): Promise<Turno[]> {
+    const res = await fetchComTimeout(`${API_BASE_URL}/courses/${cursoId}/units/${unitId}/shifts`);
+    if (!res.ok) throw new Error(`Erro ${res.status}`);
+    return res.json();
+  }
+
+  // ── Submete pré-inscrição à API e salva localmente ───────────────────────────
 
   function gerarProtocolo(): string {
     const ano = new Date().getFullYear();
@@ -121,22 +170,80 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
     return `MPC-${ano}-${num}`;
   }
 
-  function adicionarInscricao(
-    dados: Omit<Inscricao, 'id' | 'protocolo' | 'dataInscricao' | 'status'>
-  ): Inscricao {
-    const nova: Inscricao = {
-      ...dados,
-      id: String(Date.now()),
-      protocolo: gerarProtocolo(),
-      dataInscricao: new Date().toISOString().split('T')[0],
-      status: 'pendente',
-    };
-    setInscricoes((prev) => [nova, ...prev]);
-    return nova;
+  async function adicionarInscricao(dados: DadosInscricao): Promise<Inscricao> {
+    setEnviando(true);
+    setErroEnvio(null);
+
+    try {
+      const body = new FormData();
+      body.append('course_id', String(dados.curso.id));
+      body.append('unit_id', String(dados.unidade.id));
+      body.append('course_shift_id', String(dados.turno.id));
+      body.append('full_name', dados.nomeAluno);
+      body.append('cpf', dados.cpf);
+      body.append('phone', dados.telefone);
+      if (dados.senha) {
+        body.append('password', dados.senha);
+      }
+
+      const res = await fetchComTimeout(`${API_BASE_URL}/enroll`, {
+        method: 'POST',
+        body,
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.message ?? `Erro ${res.status}`);
+      }
+
+      const json = await res.json();
+
+      // Armazena token Sanctum se a API criou/vinculou uma conta
+      if (json.token) {
+        setAuthToken(json.token);
+      }
+
+      const protocolo = gerarProtocolo();
+
+      const nova: Inscricao = {
+        curso: dados.curso,
+        unidade: dados.unidade,
+        turno: dados.turno,
+        nomeAluno: dados.nomeAluno,
+        cpf: dados.cpf,
+        telefone: dados.telefone,
+        id: String(json.enrollment?.id ?? Date.now()),
+        protocolo,
+        dataInscricao: new Date().toISOString().split('T')[0],
+        status: 'pendente',
+      };
+
+      setInscricoes((prev) => [nova, ...prev]);
+      return nova;
+    } catch (e: any) {
+      setErroEnvio(e.message ?? 'Erro ao enviar inscrição.');
+      throw e;
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
-    <InscricoesContext.Provider value={{ inscricoes, adicionarInscricao }}>
+    <InscricoesContext.Provider
+      value={{
+        cursos,
+        loadingCursos,
+        errorCursos,
+        recarregarCursos: carregarCursos,
+        unidadesDoCurso,
+        turnosDoCursoNaUnidade,
+        inscricoes,
+        adicionarInscricao,
+        authToken,
+        enviando,
+        erroEnvio,
+      }}
+    >
       {children}
     </InscricoesContext.Provider>
   );
