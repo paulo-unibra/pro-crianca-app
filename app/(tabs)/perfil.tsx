@@ -236,11 +236,20 @@ export default function PerfilScreen() {
 
         {/* Aviso sem conta */}
         {!autenticado && (
-          <View style={styles.avisoCard}>
-            <Text style={styles.avisoTexto}>
-              💡 Ao fazer uma inscrição, sua conta é criada automaticamente com o CPF informado. Assim você poderá acompanhar seu histórico aqui.
-            </Text>
-          </View>
+          <>
+            <TouchableOpacity
+              style={styles.btnEntrar}
+              onPress={() => router.push('/login' as any)}
+              activeOpacity={0.8}>
+              <Text style={styles.btnEntrarText}>ENTRAR NA MINHA CONTA</Text>
+            </TouchableOpacity>
+
+            <View style={styles.avisoCard}>
+              <Text style={styles.avisoTexto}>
+                💡 Ao fazer uma inscrição, sua conta é criada automaticamente com o CPF informado. Assim você poderá acompanhar seu histórico aqui.
+              </Text>
+            </View>
+          </>
         )}
 
         {/* Botão de logout */}
@@ -486,6 +495,22 @@ const styles = StyleSheet.create({
     color: '#ff6b6b',
     fontSize: 13,
     fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+
+  // Entrar
+  btnEntrar: {
+    backgroundColor: '#fff',
+    borderRadius: 30,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  btnEntrarText: {
+    color: MPC.azulEscuro,
+    fontWeight: '900',
+    fontSize: 14,
     letterSpacing: 0.8,
   },
 });

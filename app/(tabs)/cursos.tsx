@@ -26,6 +26,7 @@ import {
   shiftLabel,
   formatTurnoHorario,
   formatDias,
+  ApiError,
 } from '@/contexts/InscricoesContext';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -693,6 +694,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export default function CursosScreen() {
   const { adicionarInscricao, enviando, erroEnvio, authToken, usuario } = useInscricoes();
+  const router = useRouter();
 
   const [step, setStep] = useState<Step>('lista');
   const [cursoSel, setCursoSel] = useState<Curso | null>(null);
@@ -705,6 +707,23 @@ export default function CursosScreen() {
     setUnidadeSel(null);
     setTurnoSel(null);
     setInscricaoFinal(null);
+  }
+
+  function handleAccountExists(message: string) {
+    Alert.alert(
+      'Conta já existente',
+      message + '\n\nFaça login para continuar.',
+      [
+        { text: 'Cancelar', style: 'cancel', onPress: () => setStep('lista') },
+        {
+          text: 'Fazer login',
+          onPress: () => {
+            setStep('lista');
+            router.push('/login' as any);
+          },
+        },
+      ],
+    );
   }
 
   async function handleConfirmarDados(nome: string, cpf: string, telefone: string, senha: string) {
@@ -721,8 +740,11 @@ export default function CursosScreen() {
       });
       setInscricaoFinal(nova);
       setStep('protocolo');
-    } catch {
-      // O erro já está em erroEnvio no context — TelaDados o exibe
+    } catch (e: any) {
+      if (e instanceof ApiError && e.code === 'account_exists') {
+        handleAccountExists(e.message);
+      }
+      // Outros erros já ficam em erroEnvio e são exibidos pela TelaDados
     }
   }
 
@@ -743,8 +765,6 @@ export default function CursosScreen() {
         setInscricaoFinal(nova);
         setStep('protocolo');
       } catch (e: any) {
-        // Mostra o erro via Alert e volta para a lista — não redireciona para TelaDados,
-        // pois o usuário já está autenticado e não há dados a corrigir nessa tela
         Alert.alert(
           'Não foi possível se inscrever',
           e?.message ?? 'Ocorreu um erro. Tente novamente.',

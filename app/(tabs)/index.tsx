@@ -15,6 +15,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MPC } from '@/constants/theme';
+import { useInscricoes } from '@/contexts/InscricoesContext';
 
 const { width, height } = Dimensions.get('window');
 const HERO_HEIGHT = height * 0.57;
@@ -37,7 +38,7 @@ type MenuItem = {
   route?: string;
 };
 
-const MENU_ITEMS: MenuItem[] = [
+const MENU_ITEMS_BASE: MenuItem[] = [
   { label: 'HOME', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
   { label: 'CURSOS', action: 'navigate', route: '/cursos' },
   { label: 'MEU PERFIL', action: 'navigate', route: '/perfil' },
@@ -48,6 +49,14 @@ export default function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { authToken } = useInscricoes();
+
+  const menuItems: MenuItem[] = authToken
+    ? MENU_ITEMS_BASE
+    : [
+        ...MENU_ITEMS_BASE,
+        { label: 'ENTRAR', action: 'navigate', route: '/login' },
+      ];
 
   return (
     <View style={{ flex: 1, backgroundColor: '#354FB8' }}>
@@ -73,10 +82,13 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.menuClose} onPress={() => setMenuOpen(false)}>
             <Text style={styles.menuCloseText}>✕</Text>
           </TouchableOpacity>
-          {MENU_ITEMS.map((item) => (
+          {menuItems.map((item: MenuItem) => (
               <TouchableOpacity
                 key={item.label}
-                style={styles.menuItem}
+                style={[
+                  styles.menuItem,
+                  item.label === 'ENTRAR' && styles.menuItemDestaque,
+                ]}
                 onPress={() => {
                   setMenuOpen(false);
                   if (item.action === 'navigate' && item.route) {
@@ -85,7 +97,10 @@ export default function HomeScreen() {
                     Linking.openURL(item.url);
                   }
                 }}>
-                <Text style={styles.menuItemText}>{item.label}</Text>
+                <Text style={[
+                  styles.menuItemText,
+                  item.label === 'ENTRAR' && styles.menuItemDestaqueText,
+                ]}>{item.label}</Text>
               </TouchableOpacity>
             ))}
         </View>
@@ -173,11 +188,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.15)',
   },
+  menuItemDestaque: {
+    marginTop: 12,
+    borderBottomWidth: 0,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+  },
   menuItemText: {
     color: MPC.branco,
     fontSize: 18,
     fontWeight: '600',
     letterSpacing: 0.5,
+  },
+  menuItemDestaqueText: {
+    color: '#fff',
+    fontWeight: '800',
   },
 
   heroImage: {

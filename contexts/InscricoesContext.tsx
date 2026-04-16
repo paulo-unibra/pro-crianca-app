@@ -12,6 +12,16 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8000/ap
 
 const STORAGE_TOKEN_KEY = '@pro_crianca:token';
 
+// Erro enriquecido com código da API
+export class ApiError extends Error {
+  code: string | null;
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code ?? null;
+  }
+}
+
 // Fetch com timeout para evitar loading infinito quando o servidor não responde
 async function fetchComTimeout(url: string, options?: RequestInit, timeoutMs = 10000): Promise<Response> {
   const controller = new AbortController();
@@ -147,6 +157,9 @@ type InscricoesContextType = {
 
   // Encerra a sessão do usuário
   logout: () => Promise<void>;
+
+  // Autentica com e-mail + senha; lança erro com mensagem legível em caso de falha
+  login: (email: string, senha: string) => Promise<void>;
 
   // Estado de envio
   enviando: boolean;
@@ -331,7 +344,7 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
 
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        throw new Error(json.message ?? `Erro ${res.status}`);
+        throw new ApiError(json.message ?? `Erro ${res.status}`, json.code);
       }
 
       const json = await res.json();
@@ -363,7 +376,7 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
       return nova;
     } catch (e: any) {
       setErroEnvio(e.message ?? 'Erro ao enviar inscrição.');
-      throw e;
+      throw e; // propaga ApiError (com .code) ou Error genérico
     } finally {
       setEnviando(false);
     }
@@ -401,6 +414,26 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
     setInscricoes([]);
   }
 
+  // ── Autentica com e-mail + senha ─────────────────────────────────────────────
+
+  async function login(email: string, senha: string): Promise<void> {
+    const res = await fetchComTimeout(`${API_BASE_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ email, password: senha }),
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error((json as any).message ?? 'Credenciais inválidas.');
+    }
+
+    const token: string = (json as any).access_token;
+    await setAuthToken(token);
+    // carregarUsuario e carregarInscricoes são disparados pelo useEffect que observa authToken
+  }
+
   return (
     <InscricoesContext.Provider
       value={{
@@ -417,6 +450,7 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
         usuario,
         loadingSession,
         logout,
+        login,
         enviando,
         erroEnvio,
       }}
