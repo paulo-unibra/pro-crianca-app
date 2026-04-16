@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MPC } from '@/constants/theme';
+import { useInscricoes } from '@/contexts/InscricoesContext';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -203,17 +204,27 @@ function TelaDados({
   metodo,
   onBack,
   onContinuar,
+  usuarioAutenticado,
 }: {
   metodo: MetodoPagamento;
   onBack: () => void;
   onContinuar: (dados: DadosDoador) => void;
+  usuarioAutenticado?: DadosDoador | null;
 }) {
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<DadosDoador>({ nome: '', email: '', telefone: '', cpf: '' });
   const [erro, setErro] = useState('');
 
-  // Carrega dados salvos do localStorage
+  // Se autenticado, pula direto para a confirmação
   useEffect(() => {
+    if (usuarioAutenticado) {
+      onContinuar(usuarioAutenticado);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Carrega dados salvos do localStorage (apenas quando não autenticado)
+  useEffect(() => {
+    if (usuarioAutenticado) return;
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => {
         if (raw) {
@@ -222,7 +233,7 @@ function TelaDados({
         }
       })
       .catch(() => {});
-  }, []);
+  }, [usuarioAutenticado]);
 
   function handleContinuar() {
     if (!form.nome.trim()) return setErro('Informe o nome completo.');
@@ -237,6 +248,9 @@ function TelaDados({
   }
 
   const tituloMetodo = metodo === 'pix' ? 'PIX' : 'Boleto';
+
+  // Enquanto o auto-skip por usuário autenticado está em andamento, não renderiza nada
+  if (usuarioAutenticado) return null;
 
   return (
     <KeyboardAvoidingView
@@ -320,21 +334,24 @@ function TelaDados({
 function TelaCartao({
   onBack,
   onContinuar,
+  usuarioAutenticado,
 }: {
   onBack: () => void;
   onContinuar: (dados: DadosDoador, cartao: DadosCartao) => void;
+  usuarioAutenticado?: DadosDoador | null;
 }) {
   const insets = useSafeAreaInsets();
-  const [dadosPessoais, setDadosPessoais] = useState<DadosDoador>({
-    nome: '', email: '', telefone: '', cpf: '',
-  });
+  const [dadosPessoais, setDadosPessoais] = useState<DadosDoador>(
+    usuarioAutenticado ?? { nome: '', email: '', telefone: '', cpf: '' }
+  );
   const [cartao, setCartao] = useState<DadosCartao>({
     numero: '', nome: '', validade: '', cvv: '',
   });
   const [erro, setErro] = useState('');
 
-  // Carrega dados salvos
+  // Carrega dados salvos (apenas quando não autenticado)
   useEffect(() => {
+    if (usuarioAutenticado) return;
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => {
         if (raw) {
@@ -343,7 +360,7 @@ function TelaCartao({
         }
       })
       .catch(() => {});
-  }, []);
+  }, [usuarioAutenticado]);
 
   function handleContinuar() {
     if (!dadosPessoais.nome.trim()) return setErro('Informe o nome completo.');
@@ -382,50 +399,54 @@ function TelaCartao({
         </View>
 
         {/* ── Dados pessoais ── */}
-        <Text style={styles.sectionTitle}>Dados pessoais</Text>
+        {!usuarioAutenticado && (
+          <>
+            <Text style={styles.sectionTitle}>Dados pessoais</Text>
 
-        <Text style={styles.inputLabel}>Nome completo *</Text>
-        <TextInput
-          style={styles.input}
-          value={dadosPessoais.nome}
-          onChangeText={(v) => setDadosPessoais({ ...dadosPessoais, nome: v })}
-          placeholder="Seu nome completo"
-          placeholderTextColor="#aaa"
-          autoCapitalize="words"
-        />
+            <Text style={styles.inputLabel}>Nome completo *</Text>
+            <TextInput
+              style={styles.input}
+              value={dadosPessoais.nome}
+              onChangeText={(v) => setDadosPessoais({ ...dadosPessoais, nome: v })}
+              placeholder="Seu nome completo"
+              placeholderTextColor="#aaa"
+              autoCapitalize="words"
+            />
 
-        <Text style={styles.inputLabel}>E-mail *</Text>
-        <TextInput
-          style={styles.input}
-          value={dadosPessoais.email}
-          onChangeText={(v) => setDadosPessoais({ ...dadosPessoais, email: v })}
-          placeholder="seu@email.com"
-          placeholderTextColor="#aaa"
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
+            <Text style={styles.inputLabel}>E-mail *</Text>
+            <TextInput
+              style={styles.input}
+              value={dadosPessoais.email}
+              onChangeText={(v) => setDadosPessoais({ ...dadosPessoais, email: v })}
+              placeholder="seu@email.com"
+              placeholderTextColor="#aaa"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
 
-        <Text style={styles.inputLabel}>Telefone / WhatsApp *</Text>
-        <TextInput
-          style={styles.input}
-          value={dadosPessoais.telefone}
-          onChangeText={(v) =>
-            setDadosPessoais({ ...dadosPessoais, telefone: formatTelefone(v) })
-          }
-          placeholder="(81) 99999-9999"
-          placeholderTextColor="#aaa"
-          keyboardType="phone-pad"
-        />
+            <Text style={styles.inputLabel}>Telefone / WhatsApp *</Text>
+            <TextInput
+              style={styles.input}
+              value={dadosPessoais.telefone}
+              onChangeText={(v) =>
+                setDadosPessoais({ ...dadosPessoais, telefone: formatTelefone(v) })
+              }
+              placeholder="(81) 99999-9999"
+              placeholderTextColor="#aaa"
+              keyboardType="phone-pad"
+            />
 
-        <Text style={styles.inputLabel}>CPF *</Text>
-        <TextInput
-          style={styles.input}
-          value={dadosPessoais.cpf}
-          onChangeText={(v) => setDadosPessoais({ ...dadosPessoais, cpf: formatCpf(v) })}
-          placeholder="000.000.000-00"
-          placeholderTextColor="#aaa"
-          keyboardType="numeric"
-        />
+            <Text style={styles.inputLabel}>CPF *</Text>
+            <TextInput
+              style={styles.input}
+              value={dadosPessoais.cpf}
+              onChangeText={(v) => setDadosPessoais({ ...dadosPessoais, cpf: formatCpf(v) })}
+              placeholder="000.000.000-00"
+              placeholderTextColor="#aaa"
+              keyboardType="numeric"
+            />
+          </>
+        )}
 
         {/* ── Dados do cartão ── */}
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Dados do cartão</Text>
@@ -674,14 +695,29 @@ function RowItem({ label, value }: { label: string; value: string }) {
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function DoacaoScreen() {
+  const { usuario } = useInscricoes();
   const [step, setStep] = useState<Step>('metodo');
   const [metodo, setMetodo] = useState<MetodoPagamento | null>(null);
   const [dadosDoador, setDadosDoador] = useState<DadosDoador | null>(null);
+
+  // Monta DadosDoador a partir do usuário autenticado (telefone pode ser null)
+  const dadosAutenticado: DadosDoador | null = usuario
+    ? {
+        nome: usuario.nome,
+        email: usuario.email,
+        telefone: usuario.telefone ?? '',
+        cpf: usuario.cpf,
+      }
+    : null;
 
   function handleMetodoSelect(m: MetodoPagamento) {
     setMetodo(m);
     if (m === 'cartao') {
       setStep('cartao');
+    } else if (dadosAutenticado) {
+      // Autenticado + pix/boleto: pula formulário de dados
+      setDadosDoador(dadosAutenticado);
+      setStep('confirmacao');
     } else {
       setStep('dados');
     }
@@ -713,6 +749,7 @@ export default function DoacaoScreen() {
           metodo={metodo!}
           onBack={() => setStep('metodo')}
           onContinuar={handleDadosContinuar}
+          usuarioAutenticado={dadosAutenticado}
         />
       );
 
@@ -721,6 +758,7 @@ export default function DoacaoScreen() {
         <TelaCartao
           onBack={() => setStep('metodo')}
           onContinuar={handleCartaoContinuar}
+          usuarioAutenticado={dadosAutenticado}
         />
       );
 

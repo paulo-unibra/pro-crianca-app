@@ -40,6 +40,7 @@ type MenuItem = {
 const MENU_ITEMS: MenuItem[] = [
   { label: 'HOME', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
   { label: 'CURSOS', action: 'navigate', route: '/cursos' },
+  { label: 'MEU PERFIL', action: 'navigate', route: '/perfil' },
   { label: 'QUERO AJUDAR', action: 'navigate', route: '/doacao' },
 ];
 

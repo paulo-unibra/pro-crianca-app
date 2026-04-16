@@ -10,6 +10,7 @@ import {
   StatusBar as RNStatusBar,
   KeyboardAvoidingView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,6 +25,7 @@ import {
   type DadosInscricao,
   shiftLabel,
   formatTurnoHorario,
+  formatDias,
 } from '@/contexts/InscricoesContext';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -38,6 +40,7 @@ type Step =
   | 'selecionarCurso'
   | 'selecionarUnidade'
   | 'selecionarTurno'
+  | 'enviando'
   | 'dados'
   | 'protocolo';
 
@@ -112,9 +115,34 @@ function ErroBox({ mensagem, onRetry }: { mensagem: string; onRetry?: () => void
 // ─── Tela: Lista de inscrições ────────────────────────────────────────────────
 
 function TelaLista({ onNova }: { onNova: () => void }) {
-  const { inscricoes } = useInscricoes();
+  const { inscricoes, cancelarInscricao } = useInscricoes();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [cancelando, setCancelando] = useState<string | null>(null);
+
+  async function handleCancelar(id: string) {
+    Alert.alert(
+      'Cancelar pré-inscrição',
+      'Tem certeza que deseja cancelar esta pré-inscrição?',
+      [
+        { text: 'Não', style: 'cancel' },
+        {
+          text: 'Sim, cancelar',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelando(id);
+            try {
+              await cancelarInscricao(id);
+            } catch {
+              Alert.alert('Erro', 'Não foi possível cancelar a inscrição. Tente novamente.');
+            } finally {
+              setCancelando(null);
+            }
+          },
+        },
+      ],
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
@@ -156,6 +184,12 @@ function TelaLista({ onNova }: { onNova: () => void }) {
                   {shiftLabel[item.turno.shift]} · {formatTurnoHorario(item.turno)}
                 </Text>
               </View>
+              {item.turno.days_of_week?.length > 0 && (
+                <View style={styles.cardRow}>
+                  <Text style={styles.cardLabel}>Dias</Text>
+                  <Text style={styles.cardValue}>{formatDias(item.turno.days_of_week)}</Text>
+                </View>
+              )}
               <View style={styles.cardRow}>
                 <Text style={styles.cardLabel}>Protocolo</Text>
                 <Text style={[styles.cardValue, { color: ROXO, fontWeight: '700' }]}>
@@ -166,6 +200,19 @@ function TelaLista({ onNova }: { onNova: () => void }) {
                 <Text style={styles.cardLabel}>Data</Text>
                 <Text style={styles.cardValue}>{item.dataInscricao}</Text>
               </View>
+              {item.status === 'pendente' && (
+                <TouchableOpacity
+                  style={[styles.btnCancelar, cancelando === item.id && { opacity: 0.6 }]}
+                  onPress={() => handleCancelar(item.id)}
+                  disabled={cancelando === item.id}
+                >
+                  {cancelando === item.id ? (
+                    <ActivityIndicator size="small" color="#EF4444" />
+                  ) : (
+                    <Text style={styles.btnCancelarText}>Cancelar pré-inscrição</Text>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           ))
         )}
@@ -379,6 +426,9 @@ function TelaEscolherTurno({
               <View style={{ flex: 1 }}>
                 <Text style={styles.optionTitle}>{shiftLabel[turno.shift]}</Text>
                 <Text style={styles.optionDesc}>{formatTurnoHorario(turno)}</Text>
+                {turno.days_of_week?.length > 0 && (
+                  <Text style={styles.optionMeta}>{formatDias(turno.days_of_week)}</Text>
+                )}
                 {turno.description ? (
                   <Text style={styles.optionMeta}>{turno.description}</Text>
                 ) : null}
@@ -594,6 +644,9 @@ function TelaProtocolo({
             label="Turno"
             value={`${shiftLabel[inscricao.turno.shift]} · ${formatTurnoHorario(inscricao.turno)}`}
           />
+          {inscricao.turno.days_of_week?.length > 0 && (
+            <Row label="Dias" value={formatDias(inscricao.turno.days_of_week)} />
+          )}
           {inscricao.turno.description ? (
             <Row label="Obs." value={inscricao.turno.description} />
           ) : null}
@@ -639,7 +692,7 @@ function Row({ label, value }: { label: string; value: string }) {
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function CursosScreen() {
-  const { adicionarInscricao, enviando, erroEnvio } = useInscricoes();
+  const { adicionarInscricao, enviando, erroEnvio, authToken, usuario } = useInscricoes();
 
   const [step, setStep] = useState<Step>('lista');
   const [cursoSel, setCursoSel] = useState<Curso | null>(null);
@@ -670,6 +723,36 @@ export default function CursosScreen() {
       setStep('protocolo');
     } catch {
       // O erro já está em erroEnvio no context — TelaDados o exibe
+    }
+  }
+
+  // Quando autenticado, pula a tela de dados e envia direto com os dados do usuário
+  async function handleTurnoSelecionado(turno: Turno) {
+    setTurnoSel(turno);
+    if (authToken && usuario) {
+      setStep('enviando');
+      try {
+        const nova = await adicionarInscricao({
+          curso: cursoSel!,
+          unidade: unidadeSel!,
+          turno,
+          nomeAluno: usuario.nome,
+          cpf: usuario.cpf,
+          telefone: usuario.telefone ?? '',
+        });
+        setInscricaoFinal(nova);
+        setStep('protocolo');
+      } catch (e: any) {
+        // Mostra o erro via Alert e volta para a lista — não redireciona para TelaDados,
+        // pois o usuário já está autenticado e não há dados a corrigir nessa tela
+        Alert.alert(
+          'Não foi possível se inscrever',
+          e?.message ?? 'Ocorreu um erro. Tente novamente.',
+          [{ text: 'OK', onPress: () => setStep('lista') }],
+        );
+      }
+    } else {
+      setStep('dados');
     }
   }
 
@@ -713,11 +796,16 @@ export default function CursosScreen() {
           curso={cursoSel!}
           unidade={unidadeSel!}
           onBack={() => setStep('selecionarUnidade')}
-          onSelect={(t) => {
-            setTurnoSel(t);
-            setStep('dados');
-          }}
+          onSelect={handleTurnoSelecionado}
         />
+      );
+
+    case 'enviando':
+      return (
+        <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
+          <Header titulo="MEUS CURSOS" />
+          <LoadingBox mensagem="Enviando pré-inscrição..." />
+        </View>
       );
 
     case 'dados':
@@ -1048,4 +1136,15 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   btnVoltarText: { color: '#fff', fontWeight: '800', fontSize: 13, letterSpacing: 0.5 },
+
+  // Cancelar inscrição
+  btnCancelar: {
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    borderRadius: 8,
+    paddingVertical: 9,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  btnCancelarText: { color: '#EF4444', fontSize: 12, fontWeight: '700' },
 });
