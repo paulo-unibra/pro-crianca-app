@@ -141,18 +141,20 @@ export default function LoginScreen() {
               <Text style={styles.btnEntrarText}>ENTRAR</Text>
             )}
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.btnCadastro}
+            onPress={() => router.push('/cadastro' as any)}
+            activeOpacity={0.8}>
+            <Text style={styles.btnCadastroText}>CRIAR CONTA</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Rodapé informativo */}
         <View style={styles.rodape}>
           <Text style={styles.rodapeTexto}>
-            Ainda não tem conta? Faça uma inscrição em um de nossos cursos — sua conta é criada automaticamente.
+            Ao criar uma conta, você poderá acompanhar o status das suas pré-inscrições a qualquer momento.
           </Text>
-          <TouchableOpacity
-            onPress={() => router.push('/cursos' as any)}
-            activeOpacity={0.75}>
-            <Text style={styles.rodapeLink}>Ver cursos disponíveis →</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -268,21 +270,30 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
+  btnCadastro: {
+    borderRadius: 30,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginTop: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  btnCadastroText: {
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: 15,
+    letterSpacing: 1,
+  },
+
   rodape: {
-    marginTop: 36,
-    gap: 12,
+    marginTop: 28,
     alignItems: 'center',
     paddingHorizontal: 8,
   },
   rodapeTexto: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 13,
-    lineHeight: 19,
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 12,
+    lineHeight: 18,
     textAlign: 'center',
-  },
-  rodapeLink: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
   },
 });

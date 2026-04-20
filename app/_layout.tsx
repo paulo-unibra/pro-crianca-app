@@ -29,6 +29,7 @@ function AppNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="doacao" options={{ headerShown: false, presentation: 'card' }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="cadastro" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />

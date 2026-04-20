@@ -161,6 +161,9 @@ type InscricoesContextType = {
   // Autentica com e-mail + senha; lança erro com mensagem legível em caso de falha
   login: (email: string, senha: string) => Promise<void>;
 
+  // Cria uma nova conta e autentica automaticamente
+  registrar: (dados: { nome: string; email: string; cpf: string; telefone: string; senha: string }) => Promise<void>;
+
   // Estado de envio
   enviando: boolean;
   erroEnvio: string | null;
@@ -414,6 +417,40 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
     setInscricoes([]);
   }
 
+  // ── Cria nova conta e autentica ──────────────────────────────────────────────
+
+  async function registrar(dados: { nome: string; email: string; cpf: string; telefone: string; senha: string }): Promise<void> {
+    const res = await fetchComTimeout(`${API_BASE_URL}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        name: dados.nome,
+        email: dados.email,
+        cpf: dados.cpf,
+        phone: dados.telefone || undefined,
+        password: dados.senha,
+        password_confirmation: dados.senha,
+      }),
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      // Laravel retorna erros de validação em json.errors (objeto) ou json.message
+      const erros = (json as any).errors;
+      if (erros) {
+        const primeira = Object.values(erros)[0];
+        const msg = Array.isArray(primeira) ? primeira[0] : String(primeira);
+        throw new ApiError(msg as string);
+      }
+      throw new ApiError((json as any).message ?? 'Não foi possível criar a conta.');
+    }
+
+    const token: string = (json as any).access_token ?? (json as any).token;
+    if (!token) throw new ApiError('Conta criada, mas token não retornado. Faça login manualmente.');
+    await setAuthToken(token);
+  }
+
   // ── Autentica com e-mail + senha ─────────────────────────────────────────────
 
   async function login(email: string, senha: string): Promise<void> {
@@ -451,6 +488,7 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
         loadingSession,
         logout,
         login,
+        registrar,
         enviando,
         erroEnvio,
       }}
