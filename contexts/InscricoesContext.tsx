@@ -164,6 +164,9 @@ type InscricoesContextType = {
   // Cria uma nova conta e autentica automaticamente
   registrar: (dados: { nome: string; email: string; cpf: string; telefone: string; senha: string }) => Promise<void>;
 
+  // Atualiza dados do perfil do usuário autenticado
+  atualizarPerfil: (dados: { nome?: string; cpf?: string; telefone?: string }) => Promise<void>;
+
   // Estado de envio
   enviando: boolean;
   erroEnvio: string | null;
@@ -409,6 +412,47 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
     );
   }
 
+  // ── Atualiza dados do perfil ─────────────────────────────────────────────────
+
+  async function atualizarPerfil(dados: { nome?: string; cpf?: string; telefone?: string }): Promise<void> {
+    if (!authToken) throw new Error('Usuário não autenticado.');
+
+    const body: Record<string, string> = {};
+    if (dados.nome) body.name = dados.nome;
+    if (dados.cpf) body.cpf = dados.cpf.replace(/\D/g, '');
+    if (dados.telefone !== undefined) body.phone = dados.telefone.replace(/\D/g, '');
+
+    const res = await fetchComTimeout(`${API_BASE_URL}/user/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const erros = (json as any).errors;
+      if (erros) {
+        const primeira = Object.values(erros)[0];
+        const msg = Array.isArray(primeira) ? primeira[0] : String(primeira);
+        throw new Error(msg as string);
+      }
+      throw new Error((json as any).message ?? 'Não foi possível atualizar o perfil.');
+    }
+
+    // Atualiza o estado local sem precisar recarregar
+    setUsuario((prev) => prev ? {
+      ...prev,
+      nome: dados.nome ?? prev.nome,
+      cpf: dados.cpf ? dados.cpf.replace(/\D/g, '') : prev.cpf,
+      telefone: dados.telefone !== undefined ? dados.telefone.replace(/\D/g, '') : prev.telefone,
+    } : prev);
+  }
+
   // ── Encerra a sessão do usuário ──────────────────────────────────────────────
 
   async function logout(): Promise<void> {
@@ -489,6 +533,7 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
         logout,
         login,
         registrar,
+        atualizarPerfil,
         enviando,
         erroEnvio,
       }}
