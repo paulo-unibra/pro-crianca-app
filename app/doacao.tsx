@@ -159,10 +159,12 @@ function TelaValor({
   metodo,
   onBack,
   onContinuar,
+  erroExterno,
 }: {
   metodo: MetodoPagamento;
   onBack: () => void;
   onContinuar: (valor: number) => void;
+  erroExterno?: string;
 }) {
   const insets = useSafeAreaInsets();
   const [valorSelecionado, setValorSelecionado] = useState<number | null>(null);
@@ -223,6 +225,7 @@ function TelaValor({
         </View>
 
         {erro ? <Text style={styles.erroText}>{erro}</Text> : null}
+        {!erro && erroExterno ? <Text style={styles.erroText}>{erroExterno}</Text> : null}
 
         <TouchableOpacity style={styles.btnPrimario} onPress={handleContinuar}>
           <Text style={styles.btnPrimarioText}>CONTINUAR</Text>
@@ -238,25 +241,20 @@ function TelaDados({
   metodo,
   onBack,
   onContinuar,
-  dadosIniciais,
 }: {
   metodo: MetodoPagamento;
   onBack: () => void;
   onContinuar: (dados: DadosDoador) => void;
-  dadosIniciais?: DadosDoador | null;
 }) {
   const insets = useSafeAreaInsets();
-  const [form, setForm] = useState<DadosDoador>(dadosIniciais ?? { nome: '', email: '', telefone: '', cpf: '' });
+  const [form, setForm] = useState<DadosDoador>({ nome: '', email: '', telefone: '', cpf: '' });
   const [erro, setErro] = useState('');
 
   useEffect(() => {
-    if (dadosIniciais) { onContinuar(dadosIniciais); return; }
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
       if (raw) setForm(JSON.parse(raw));
     }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (dadosIniciais) return null;
 
   function handleContinuar() {
     if (!form.nome.trim()) return setErro('Informe o nome completo.');
@@ -523,7 +521,17 @@ export default function DoacaoScreen() {
 
   function handleValorContinuar(v: number) {
     setValor(v);
-    setStep('dados');
+    // Se usuário autenticado, pular etapa de dados
+    if (dadosAutenticado) {
+      setDadosDoador(dadosAutenticado);
+      if (metodo === 'credit_card') {
+        setStep('cartao');
+      } else {
+        processarPagamento(dadosAutenticado, null, v);
+      }
+    } else {
+      setStep('dados');
+    }
   }
 
   function handleDadosContinuar(dados: DadosDoador) {
@@ -539,16 +547,17 @@ export default function DoacaoScreen() {
     if (dadosDoador) processarPagamento(dadosDoador, cartao);
   }
 
-  async function processarPagamento(dados: DadosDoador, cartao: DadosCartao | null) {
+  async function processarPagamento(dados: DadosDoador, cartao: DadosCartao | null, valorOverride?: number) {
     setStep('processando');
     setErroProcessamento('');
+    const valorFinal = valorOverride ?? valor;
 
     try {
       const isAnonimo = !authToken;
       const url = isAnonimo ? `${API_BASE_URL}/donations/anonymous` : `${API_BASE_URL}/donations`;
 
       const body: any = {
-        amount: valor,
+        amount: valorFinal,
         payment_method: metodo,
         donor_name: dados.nome,
         donor_email: dados.email,
@@ -580,7 +589,8 @@ export default function DoacaoScreen() {
       setStep('confirmacao');
     } catch (e: any) {
       setErroProcessamento(e.message ?? 'Não foi possível processar o pagamento.');
-      setStep('dados');
+      // Volta para 'dados' (usuário anônimo) ou 'valor' (usuário autenticado)
+      setStep(dadosAutenticado ? 'valor' : 'dados');
     }
   }
 
@@ -608,7 +618,7 @@ export default function DoacaoScreen() {
     case 'metodo':
       return <TelaMetodo onSelect={handleMetodoSelect} />;
     case 'valor':
-      return <TelaValor metodo={metodo!} onBack={() => setStep('metodo')} onContinuar={handleValorContinuar} />;
+      return <TelaValor metodo={metodo!} onBack={() => setStep('metodo')} onContinuar={handleValorContinuar} erroExterno={erroProcessamento} />;
     case 'dados':
       return (
         <>
@@ -616,7 +626,6 @@ export default function DoacaoScreen() {
             metodo={metodo!}
             onBack={() => setStep('valor')}
             onContinuar={handleDadosContinuar}
-            dadosIniciais={dadosAutenticado}
           />
           {erroProcessamento ? (
             <View style={{ position: 'absolute', bottom: 24, left: 20, right: 20, backgroundColor: '#EF4444', borderRadius: 12, padding: 14 }}>
