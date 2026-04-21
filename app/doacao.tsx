@@ -520,6 +520,7 @@ export default function DoacaoScreen() {
   }
 
   function handleValorContinuar(v: number) {
+    console.log('[Doacao] handleValorContinuar', { v, metodo, dadosAutenticado: !!dadosAutenticado, authToken: authToken ? authToken.slice(0, 10) + '...' : null });
     setValor(v);
     // Se usuário autenticado, pular etapa de dados
     if (dadosAutenticado) {
@@ -578,16 +579,36 @@ export default function DoacaoScreen() {
       };
       if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
+      console.log('[Doacao] REQUEST', {
+        url,
+        metodo,
+        valorFinal,
+        isAnonimo,
+        body: { ...body, card_number: body.card_number ? '****' : undefined, card_cvv: body.card_cvv ? '***' : undefined },
+        hasAuthToken: !!authToken,
+      });
+
       const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
-      const json = await res.json();
+      const rawText = await res.text();
+
+      console.log('[Doacao] RESPONSE', { status: res.status, ok: res.ok, rawText });
+
+      let json: any;
+      try {
+        json = JSON.parse(rawText);
+      } catch {
+        throw new Error(`Resposta inválida do servidor (${res.status}): ${rawText.slice(0, 200)}`);
+      }
 
       if (!res.ok) {
-        throw new Error(json.message ?? 'Erro ao processar pagamento.');
+        console.log('[Doacao] ERRO HTTP', { status: res.status, json });
+        throw new Error(json.message ?? `Erro ${res.status} ao processar pagamento.`);
       }
 
       setResultado(json);
       setStep('confirmacao');
     } catch (e: any) {
+      console.log('[Doacao] CATCH', { name: e?.name, message: e?.message, stack: e?.stack?.slice(0, 300) });
       setErroProcessamento(e.message ?? 'Não foi possível processar o pagamento.');
       // Volta para 'dados' (usuário anônimo) ou 'valor' (usuário autenticado)
       setStep(dadosAutenticado ? 'valor' : 'dados');
