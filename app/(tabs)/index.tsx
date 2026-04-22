@@ -45,6 +45,14 @@ const MENU_ITEMS_BASE: MenuItem[] = [
   { label: 'QUERO AJUDAR', action: 'navigate', route: '/doacao' },
 ];
 
+const MENU_ITEMS_AUTENTICADO: MenuItem[] = [
+  { label: 'HOME', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
+  { label: 'CURSOS', action: 'navigate', route: '/cursos' },
+  { label: 'MEU PERFIL', action: 'navigate', route: '/perfil' },
+  { label: 'MINHAS DOAÇÕES', action: 'navigate', route: '/minhas-doacoes' },
+  { label: 'QUERO AJUDAR', action: 'navigate', route: '/doacao' },
+];
+
 export default function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const insets = useSafeAreaInsets();
@@ -52,7 +60,7 @@ export default function HomeScreen() {
   const { authToken } = useInscricoes();
 
   const menuItems: MenuItem[] = authToken
-    ? MENU_ITEMS_BASE
+    ? MENU_ITEMS_AUTENTICADO
     : [
         ...MENU_ITEMS_BASE,
         { label: 'ENTRAR', action: 'navigate', route: '/login' },

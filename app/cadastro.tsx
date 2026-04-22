@@ -16,6 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useInscricoes } from '@/contexts/InscricoesContext';
+import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 
 const STATUSBAR_HEIGHT = Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 24) : 44;
 const AZUL = '#354FB8';
@@ -59,6 +60,7 @@ export default function CadastroScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { registrar } = useInscricoes();
+  const keyboardHeight = useKeyboardHeight();
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -95,11 +97,7 @@ export default function CadastroScreen() {
         telefone: telefone.replace(/\D/g, ''),
         senha,
       });
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace('/');
-      }
+      router.replace('/perfil' as any);
     } catch (e: any) {
       setErro(e.message ?? 'Não foi possível criar a conta. Tente novamente.');
     } finally {
@@ -110,7 +108,7 @@ export default function CadastroScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: AZUL }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StatusBar style="light" translucent />
 
       {/* Header */}
@@ -130,7 +128,10 @@ export default function CadastroScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
+        contentContainerStyle={[
+          styles.scroll,
+          // { paddingBottom: keyboardHeight > 0 ? insets.bottom : 0 },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
 
