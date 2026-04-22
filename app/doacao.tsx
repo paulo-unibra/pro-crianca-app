@@ -385,6 +385,10 @@ function TelaConfirmacao({
   const router = useRouter();
   const { payment } = resultado;
 
+  console.log('[Confirmacao] resultado completo', JSON.stringify(resultado, null, 2));
+  console.log('[Confirmacao] payment', JSON.stringify(payment, null, 2));
+  console.log('[Confirmacao] PIX - qr_code_url:', payment?.qr_code_url, '| qr_code:', payment?.qr_code?.slice(0, 40));
+
   async function handleCopiarPix() {
     if (payment.qr_code) {
       await Clipboard.setStringAsync(payment.qr_code);
@@ -605,6 +609,13 @@ export default function DoacaoScreen() {
         throw new Error(json.message ?? `Erro ${res.status} ao processar pagamento.`);
       }
 
+      console.log('[Doacao] JSON COMPLETO DO BACK-END', JSON.stringify(json, null, 2));
+      console.log('[Doacao] PAYMENT OBJECT', JSON.stringify(json?.payment, null, 2));
+      console.log('[Doacao] PIX FIELDS', {
+        qr_code_url: json?.payment?.qr_code_url,
+        qr_code: json?.payment?.qr_code,
+        status: json?.payment?.status,
+      });
       setResultado(json);
       setStep('confirmacao');
     } catch (e: any) {
