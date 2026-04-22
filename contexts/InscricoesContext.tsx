@@ -331,10 +331,15 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
       body.append('unit_id', String(dados.unidade.id));
       body.append('course_shift_id', String(dados.turno.id));
       body.append('full_name', dados.nomeAluno);
-      body.append('cpf', dados.cpf);
       body.append('phone', dados.telefone);
-      if (dados.senha) {
-        body.append('password', dados.senha);
+
+      // Quando já autenticado, o backend identifica o usuário pelo token.
+      // Enviar o CPF nesse caso faz a API retornar "account_exists".
+      if (!authToken) {
+        body.append('cpf', dados.cpf);
+        if (dados.senha) {
+          body.append('password', dados.senha);
+        }
       }
 
       const headers: Record<string, string> = {};
