@@ -1,142 +1,181 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  Image,
-  StyleSheet,
-  TouchableOpacity,
-  Linking,
-  Dimensions,
-  ImageBackground,
-  StatusBar as RNStatusBar,
-  Platform,
-} from 'react-native';
+import React from 'react';
+import type { ImageSourcePropType } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { MPC } from '@/constants/theme';
-import { useInscricoes } from '@/contexts/InscricoesContext';
+import {
+  Image,
+  ImageBackground,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { width, height } = Dimensions.get('window');
-const HERO_HEIGHT = height * 0.57;
-const STATUSBAR_HEIGHT = Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 24) : 44;
+type CourseItem = {
+  id: string;
+  title: string;
+  subtitle: string;
+  image: ImageSourcePropType;
+};
 
-function DecorativeShape() {
+const COURSE_ITEMS: CourseItem[] = [
+  {
+    id: '1',
+    title: 'Música e Arte',
+    subtitle: 'Desperte talentos',
+    image: require('@/assets/images/hero-crianca.jpg'),
+  },
+  {
+    id: '2',
+    title: 'Reforço Escolar',
+    subtitle: 'Aprender com apoio',
+    image: require('@/assets/images/hero-crianca.jpg'),
+  },
+  {
+    id: '3',
+    title: 'Tecnologia',
+    subtitle: 'Inclusão digital',
+    image: require('@/assets/images/hero-crianca.jpg'),
+  },
+];
+
+function TabButton({
+  icon,
+  label,
+  active,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  active?: boolean;
+  onPress: () => void;
+}) {
   return (
-    <View style={styles.decorShape} pointerEvents="none">
-      <View style={styles.decorArc} />
-      <View style={styles.decorLine} />
-    </View>
+    <TouchableOpacity style={styles.tabButton} onPress={onPress} activeOpacity={0.8}>
+      <Ionicons name={icon} size={23} color={active ? '#1B67C8' : '#A0A8BB'} />
+      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
-// Itens do menu: label + ação
-type MenuItem = {
-  label: string;
-  action: 'link' | 'navigate';
-  url?: string;
-  route?: string;
-};
-
-const MENU_ITEMS_BASE: MenuItem[] = [
-  { label: 'HOME', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
-  { label: 'CURSOS', action: 'navigate', route: '/cursos' },
-  { label: 'MEU PERFIL', action: 'navigate', route: '/perfil' },
-  { label: 'QUERO AJUDAR', action: 'navigate', route: '/doacao' },
-];
-
-const MENU_ITEMS_AUTENTICADO: MenuItem[] = [
-  { label: 'HOME', action: 'link', url: 'https://movimentoprocrianca.org.br/v2/' },
-  { label: 'CURSOS', action: 'navigate', route: '/cursos' },
-  { label: 'MEU PERFIL', action: 'navigate', route: '/perfil' },
-  { label: 'MINHAS DOAÇÕES', action: 'navigate', route: '/minhas-doacoes' },
-  { label: 'QUERO AJUDAR', action: 'navigate', route: '/doacao' },
-];
-
 export default function HomeScreen() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { authToken } = useInscricoes();
-
-  const menuItems: MenuItem[] = authToken
-    ? MENU_ITEMS_AUTENTICADO
-    : [
-        ...MENU_ITEMS_BASE,
-        { label: 'ENTRAR', action: 'navigate', route: '/login' },
-      ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#354FB8' }}>
+    <View style={styles.screen}>
       <StatusBar style="light" translucent />
 
-      {/* Header flutuante */}
-      <View style={styles.floatingHeader} pointerEvents="box-none">
-        <Image
-          source={require('@/assets/images/logo-branca.png')}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
-        <TouchableOpacity style={styles.hamburger} onPress={() => setMenuOpen(!menuOpen)}>
-          <View style={[styles.hamburgerLine, { width: 22 }]} />
-          <View style={[styles.hamburgerLine, { width: 16, alignSelf: 'flex-end' }]} />
-          <View style={[styles.hamburgerLine, { width: 22 }]} />
-        </TouchableOpacity>
-      </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: Math.max(98, insets.bottom + 88) }}>
+        <View style={[styles.topSection, { paddingTop: insets.top + 10 }]}> 
+          <View style={styles.topCircleLarge} pointerEvents="none" />
+          <View style={styles.topCircleSmall} pointerEvents="none" />
 
-      {/* Menu overlay */}
-      {menuOpen && (
-        <View style={styles.menuOverlay}>
-          <TouchableOpacity style={styles.menuClose} onPress={() => setMenuOpen(false)}>
-            <Text style={styles.menuCloseText}>✕</Text>
-          </TouchableOpacity>
-          {menuItems.map((item: MenuItem) => (
+          <View style={styles.topHeaderRow}>
+            <Image
+              source={require('@/assets/images/logo-branca.png')}
+              resizeMode="contain"
+              style={styles.headerLogo}
+            />
+            <TouchableOpacity style={styles.notificationButton} activeOpacity={0.8}>
+              <Ionicons name="notifications-outline" size={18} color="#E5F3FF" />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.welcomeText}>Bem-vindo(a)! 👋</Text>
+          <Text style={styles.heroHeadline}>Cada doação transforma{'\n'}uma vida! 💛</Text>
+
+          <ImageBackground
+            source={require('@/assets/images/hero-crianca.jpg')}
+            resizeMode="cover"
+            style={styles.heroCard}
+            imageStyle={styles.heroCardImage}>
+            <View style={styles.heroCardShade} />
+            <View style={styles.heroCardContent}>
+              <Text style={styles.heroCardCaption}>Juntos pelo futuro das crianças</Text>
               <TouchableOpacity
-                key={item.label}
-                style={[
-                  styles.menuItem,
-                  item.label === 'ENTRAR' && styles.menuItemDestaque,
-                ]}
-                onPress={() => {
-                  setMenuOpen(false);
-                  if (item.action === 'navigate' && item.route) {
-                    router.push(item.route as any);
-                  } else if (item.url) {
-                    Linking.openURL(item.url);
-                  }
-                }}>
-                <Text style={[
-                  styles.menuItemText,
-                  item.label === 'ENTRAR' && styles.menuItemDestaqueText,
-                ]}>{item.label}</Text>
+                style={styles.heroDonateButton}
+                activeOpacity={0.85}
+                onPress={() => router.push('/doacao' as any)}>
+                <Ionicons name="heart" size={16} color="#1B67C8" />
+                <Text style={styles.heroDonateText}>Doar agora</Text>
+              </TouchableOpacity>
+            </View>
+          </ImageBackground>
+        </View>
+
+        <View style={styles.pageBody}>
+          <TouchableOpacity
+            style={styles.ctaBanner}
+            activeOpacity={0.9}
+            onPress={() => router.push('/doacao' as any)}>
+            <View style={styles.ctaCircle} pointerEvents="none" />
+            <View style={styles.ctaTextWrap}>
+              <Text style={styles.ctaTitle}>Faça a diferença{'\n'}hoje mesmo!</Text>
+              <Text style={styles.ctaSubtext}>Sua doação chega direto{'\n'}para as crianças</Text>
+            </View>
+            <View style={styles.ctaButton}>
+              <Text style={styles.ctaButtonText}>Doe já</Text>
+              <Ionicons name="arrow-forward" size={15} color="#fff" />
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.coursesHeader}>
+            <View style={styles.coursesTitleWrap}>
+              <Ionicons name="book-outline" size={18} color="#1B67C8" />
+              <Text style={styles.coursesTitle}>Atividades em Destaque</Text>
+            </View>
+            <TouchableOpacity onPress={() => router.push('/cursos' as any)}>
+              <Text style={styles.viewAllText}>Ver todos</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.coursesList}>
+            {COURSE_ITEMS.map((item) => (
+              <TouchableOpacity
+                key={item.title}
+                style={styles.courseCard}
+                activeOpacity={0.88}
+                onPress={() =>
+                  router.push({
+                    pathname: '/curso/[id]',
+                    params: { id: item.id },
+                  } as any)
+                }>
+                <Image source={item.image} style={styles.courseImage} resizeMode="cover" />
+                <View style={styles.courseOverlay} />
+                <View style={styles.courseTextWrap}>
+                  <Text style={styles.courseTitle}>{item.title}</Text>
+                  <Text style={styles.courseSubtitle}>{item.subtitle}</Text>
+                </View>
               </TouchableOpacity>
             ))}
+          </ScrollView>
         </View>
-      )}
+      </ScrollView>
 
-      {/* Hero — foto fullscreen */}
-      <ImageBackground
-        source={require('@/assets/images/hero-crianca.jpg')}
-        style={styles.heroImage}
-        resizeMode="cover">
-        {/* <View style={styles.heroGradientTop} /> */}
-      </ImageBackground>
-
-      {/* Seção roxa */}
-      <View style={[styles.purpleSection, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <DecorativeShape />
-        <View style={styles.purpleContent}>
-          <Text style={styles.purpleOverline}>SÃO MAIS DE</Text>
-          <Text style={styles.purpleStat}>50 MIL</Text>
-          <Text style={styles.purpleStatSub}>crianças</Text>
-          <Text style={styles.purpleDescription}>
-            atendidas pelo Movimento Pró Criança desde 1993
-          </Text>
-          <TouchableOpacity
-            style={styles.purpleCTA}
-            onPress={() => router.push('/doacao' as any)}>
-            <Text style={styles.purpleCTAText}>QUERO AJUDAR MAIS CRIANÇAS</Text>
-          </TouchableOpacity>
+      <View style={[styles.bottomBarOuter, { paddingBottom: Math.max(insets.bottom, 8) }]}> 
+        <View style={styles.bottomBar}>
+          <TabButton icon="home" label="Início" active onPress={() => router.push('/' as any)} />
+          <TabButton
+            icon="heart-outline"
+            label="Doar"
+            onPress={() => router.push('/doacao' as any)}
+          />
+          <TabButton icon="book-outline" label="Cursos" onPress={() => router.push('/cursos' as any)} />
+          <TabButton
+            icon="information-circle-outline"
+            label="Sobre"
+            onPress={() => router.push('/explore' as any)}
+          />
         </View>
       </View>
     </View>
@@ -144,173 +183,254 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  floatingHeader: {
+  screen: {
+    flex: 1,
+    backgroundColor: '#EEF2F8',
+  },
+
+  topSection: {
+    backgroundColor: '#1B67C8',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    paddingHorizontal: 18,
+    paddingBottom: 20,
+    overflow: 'hidden',
+  },
+  topCircleLarge: {
     position: 'absolute',
-    top: STATUSBAR_HEIGHT + 8,
-    left: 0,
-    right: 0,
-    zIndex: 100,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(111, 196, 255, 0.14)',
+    right: -46,
+    top: -26,
+  },
+  topCircleSmall: {
+    position: 'absolute',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: 'rgba(255, 219, 92, 0.16)',
+    right: 16,
+    top: 18,
+  },
+  topHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  headerLogo: {
+    width: 126,
+    height: 44,
+    marginLeft: -12,
+  },
+  notificationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+
+  welcomeText: {
+    fontSize: 13,
+    color: '#E7F3FF',
+    marginBottom: 6,
+  },
+  heroHeadline: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    lineHeight: 27,
+    marginBottom: 18,
+  },
+  heroCard: {
+    width: '100%',
+    height: 206,
+    borderRadius: 24,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  heroCardImage: {
+    borderRadius: 24,
+  },
+  heroCardShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(22, 79, 149, 0.35)',
+  },
+  heroCardContent: {
+    paddingHorizontal: 14,
+    paddingBottom: 16,
+    zIndex: 2,
+  },
+  heroCardCaption: {
+    color: '#EAF5FF',
+    fontSize: 12,
+    marginBottom: 12,
+  },
+  heroDonateButton: {
+    backgroundColor: '#FFD500',
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 16,
+  },
+  heroDonateText: {
+    color: '#1B67C8',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+
+  pageBody: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  ctaBanner: {
+    backgroundColor: '#FFD500',
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    overflow: 'hidden',
+    marginBottom: 18,
   },
-  logoImage: {
-    width: 130,
-    height: 75,
+  ctaCircle: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: 'rgba(27, 103, 200, 0.14)',
+    right: -28,
+    top: -12,
   },
-  hamburger: {
+  ctaTextWrap: {
+    zIndex: 1,
+  },
+  ctaTitle: {
+    color: '#1B67C8',
+    fontSize: 16,
+    fontWeight: '800',
+    lineHeight: 19,
+    marginBottom: 4,
+  },
+  ctaSubtext: {
+    color: '#1B67C8',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  ctaButton: {
+    backgroundColor: '#1B67C8',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 5,
-    padding: 6,
+    zIndex: 1,
   },
-  hamburgerLine: {
-    height: 2.5,
-    backgroundColor: MPC.branco,
-    borderRadius: 2,
+  ctaButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
   },
 
-  menuOverlay: {
+  coursesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  coursesTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  coursesTitle: {
+    color: '#1A5CB0',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  viewAllText: {
+    color: '#1A5CB0',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  coursesList: {
+    gap: 12,
+    paddingBottom: 8,
+  },
+  courseCard: {
+    width: 162,
+    height: 110,
+    borderRadius: 18,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+    backgroundColor: '#D4DCEC',
+  },
+  courseImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: undefined,
+    height: undefined,
+  },
+  courseOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(9, 39, 75, 0.22)',
+  },
+  courseTextWrap: {
+    paddingHorizontal: 10,
+    paddingBottom: 10,
+  },
+  courseTitle: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  courseSubtitle: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 11,
+    marginTop: 2,
+  },
+
+  bottomBarOuter: {
     position: 'absolute',
-    top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#354FB8',
-    zIndex: 200,
-    paddingTop: STATUSBAR_HEIGHT + 20,
-    paddingHorizontal: 28,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#DBE3F3',
+    paddingTop: 8,
+    paddingHorizontal: 10,
+  },
+  bottomBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     gap: 6,
   },
-  menuClose: {
-    alignSelf: 'flex-end',
-    marginBottom: 24,
-    padding: 8,
-  },
-  menuCloseText: {
-    color: MPC.branco,
-    fontSize: 22,
-    fontWeight: '300',
-  },
-  menuItem: {
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.15)',
-  },
-  menuItemDestaque: {
-    marginTop: 12,
-    borderBottomWidth: 0,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 9,
     borderRadius: 12,
-    paddingHorizontal: 16,
   },
-  menuItemText: {
-    color: MPC.branco,
-    fontSize: 18,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  menuItemDestaqueText: {
-    color: '#fff',
-    fontWeight: '800',
-  },
-
-  heroImage: {
-    width,
-    height: HERO_HEIGHT,
-  },
-  heroGradientTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 140,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-
-  purpleSection: {
-    flex: 1,
-    backgroundColor: '#354FB8',
-    paddingTop: 24,
-    paddingHorizontal: 24,
-    overflow: 'hidden',
-    justifyContent: 'space-between',
-  },
-  purpleContent: {
-    zIndex: 2,
-    flex: 1,
-    justifyContent: 'space-between',
-  },
-  purpleOverline: {
-    color: 'rgba(255,255,255,0.75)',
+  tabLabel: {
+    color: '#A0A8BB',
     fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1.5,
-    marginBottom: 2,
+    fontWeight: '500',
+    marginTop: 3,
   },
-  purpleStat: {
-    color: MPC.branco,
-    fontSize: 54,
-    fontWeight: '900',
-    lineHeight: 58,
-  },
-  purpleStatSub: {
-    color: MPC.branco,
-    fontSize: 40,
+  tabLabelActive: {
+    color: '#1B67C8',
     fontWeight: '700',
-    lineHeight: 44,
-    marginTop: -2,
-  },
-  purpleDescription: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 6,
-    maxWidth: '70%',
-  },
-  purpleCTA: {
-    backgroundColor: '#00AAFF',
-    paddingHorizontal: 20,
-    paddingVertical: 13,
-    borderRadius: 30,
-    alignSelf: 'flex-start',
-  },
-  purpleCTAText: {
-    color: MPC.branco,
-    fontWeight: '800',
-    fontSize: 12,
-    letterSpacing: 0.5,
-  },
-
-  decorShape: {
-    position: 'absolute',
-    right: -20,
-    bottom: -10,
-    width: 180,
-    height: 200,
-    zIndex: 1,
-  },
-  decorArc: {
-    position: 'absolute',
-    right: 10,
-    bottom: 20,
-    width: 140,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 16,
-    borderColor: '#00C8FF',
-    opacity: 0.85,
-    transform: [{ rotate: '-20deg' }, { scaleX: 0.7 }],
-  },
-  decorLine: {
-    position: 'absolute',
-    right: 55,
-    bottom: 40,
-    width: 60,
-    height: 100,
-    borderRadius: 40,
-    borderWidth: 10,
-    borderColor: '#00C8FF',
-    opacity: 0.7,
-    transform: [{ rotate: '15deg' }, { scaleX: 0.5 }],
   },
 });

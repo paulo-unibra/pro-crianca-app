@@ -139,6 +139,7 @@ type InscricoesContextType = {
   recarregarCursos: () => void;
 
   unidadesDoCurso: (cursoId: number) => Promise<Unidade[]>;
+  listarUnidades: () => Promise<Unidade[]>;
   turnosDoCursoNaUnidade: (cursoId: number, unitId: number) => Promise<Turno[]>;
 
   // Inscrições (buscadas da API quando autenticado)
@@ -309,6 +310,37 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
     const res = await fetchComTimeout(`${API_BASE_URL}/courses/${cursoId}/units`);
     if (!res.ok) throw new Error(`Erro ${res.status}`);
     return res.json();
+  }
+
+  // ── Lista unidades (endpoint direto com fallback por curso) ─────────────────
+
+  async function listarUnidades(): Promise<Unidade[]> {
+    const res = await fetchComTimeout(`${API_BASE_URL}/units`);
+    if (res.ok) {
+      return res.json();
+    }
+
+    const cursosBase: Curso[] = cursos.length > 0
+      ? cursos
+      : await (async () => {
+          const r = await fetchComTimeout(`${API_BASE_URL}/courses`);
+          if (!r.ok) return [];
+          return r.json();
+        })();
+
+    const unidadesById = new Map<number, Unidade>();
+    await Promise.all(
+      cursosBase.map(async (curso) => {
+        try {
+          const unidades = await unidadesDoCurso(curso.id);
+          unidades.forEach((u) => unidadesById.set(u.id, u));
+        } catch {
+          // ignora falhas pontuais por curso
+        }
+      }),
+    );
+
+    return Array.from(unidadesById.values());
   }
 
   // ── Busca turnos de um curso em uma unidade ──────────────────────────────────
@@ -528,6 +560,7 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
         errorCursos,
         recarregarCursos: carregarCursos,
         unidadesDoCurso,
+        listarUnidades,
         turnosDoCursoNaUnidade,
         inscricoes,
         adicionarInscricao,

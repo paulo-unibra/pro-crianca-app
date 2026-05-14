@@ -1,28 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   TextInput,
   Platform,
-  StatusBar as RNStatusBar,
   KeyboardAvoidingView,
   ActivityIndicator,
   Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { MPC } from '@/constants/theme';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   useInscricoes,
   type Curso,
   type Unidade,
   type Turno,
   type Inscricao,
-  type DadosInscricao,
   shiftLabel,
   formatTurnoHorario,
   formatDias,
@@ -33,6 +32,38 @@ import {
 
 const ROXO = '#354FB8';
 const CIANO = '#00AAFF';
+const AZUL = '#1565C0';
+const AZUL_CLARO = '#1976D2';
+const BG = '#F4F7FF';
+const TEXTO = '#1A2D5A';
+
+const COURSE_IMAGE_MAP: Record<number, string> = {
+  1: 'https://images.unsplash.com/photo-1759143103113-6696d40598bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
+  2: 'https://images.unsplash.com/photo-1703301287688-c9a306ebed99?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
+  3: 'https://images.unsplash.com/photo-1762475833776-fd57865db4d5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
+  4: 'https://images.unsplash.com/photo-1758874961449-37e171a41223?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
+  5: 'https://images.unsplash.com/photo-1767902012345-bd31f0ba76d7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
+};
+
+const UNIT_BADGE_COLORS = [
+  { bg: '#EFF6FF', text: '#3B82F6' },
+  { bg: '#FDF2F8', text: '#EC4899' },
+  { bg: '#ECFDF5', text: '#10B981' },
+  { bg: '#F5F3FF', text: '#8B5CF6' },
+  { bg: '#FFFBEB', text: '#F59E0B' },
+];
+
+function getCourseImage(courseId: number) {
+  return COURSE_IMAGE_MAP[courseId] ?? COURSE_IMAGE_MAP[1];
+}
+
+function getUnitBadgeColor(unitName?: string) {
+  if (!unitName) return UNIT_BADGE_COLORS[0];
+  const hash = unitName
+    .split('')
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return UNIT_BADGE_COLORS[hash % UNIT_BADGE_COLORS.length];
+}
 
 // ─── Tipos de step ────────────────────────────────────────────────────────────
 

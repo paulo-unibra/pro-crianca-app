@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   View,
   Text,
@@ -7,8 +8,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
+  type TextInputProps,
   Platform,
-  StatusBar as RNStatusBar,
   KeyboardAvoidingView,
   Alert,
   ActivityIndicator,
@@ -19,13 +20,16 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MPC } from '@/constants/theme';
 import { useInscricoes } from '@/contexts/InscricoesContext';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const STATUSBAR_HEIGHT = Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 24) : 44;
-const AZUL = '#354FB8';
+const AZUL = '#1B67C8';
+const AZUL_ESCURO = '#1565C0';
+const AZUL_CLARO = '#1976D2';
+const AMARELO = '#FFD600';
+const BG = '#F4F7FF';
+const TEXTO = '#1A2D5A';
 const VERDE = '#00C896';
 const STORAGE_KEY = '@mpc_doacao_dados';
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8000/api';
@@ -47,6 +51,13 @@ interface DadosCartao {
   nome: string;
   validade: string;
   cvv: string;
+}
+
+interface FormErrors {
+  nome?: string;
+  telefone?: string;
+  cpf?: string;
+  email?: string;
 }
 
 interface ResultadoPagamento {
@@ -88,6 +99,20 @@ function formatValidade(text: string) {
   return d;
 }
 
+function validateEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function validateCPF(cpf: string) {
+  const digits = cpf.replace(/\D/g, '');
+  return digits.length === 11;
+}
+
+function validatePhone(phone: string) {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 10;
+}
+
 // ─── Header ───────────────────────────────────────────────────────────────────
 
 function Header({ onBack }: { onBack?: () => void }) {
@@ -103,6 +128,134 @@ function Header({ onBack }: { onBack?: () => void }) {
       )}
       <Image source={require('@/assets/images/logo-branca.png')} style={styles.logoImage} resizeMode="contain" />
       <View style={styles.backBtn} />
+    </View>
+  );
+}
+
+type DoadorField = keyof DadosDoador;
+
+function DonationProgressHeader({
+  onBack,
+  step,
+}: {
+  onBack: () => void;
+  step: 1 | 2;
+}) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={[styles.progressHeader, { paddingTop: insets.top + 10 }]}> 
+      <View style={styles.progressTopRow}>
+        <TouchableOpacity style={styles.progressBackBtn} onPress={onBack}>
+          <Ionicons name="chevron-back" size={20} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.progressTitle}>Fazer uma doação</Text>
+      </View>
+
+      <View style={styles.progressStepsRow}>
+        <View style={styles.progressStepWrap}>
+          <View style={[styles.progressStepCircle, styles.progressStepCircleActive]}>
+            {step > 1 ? (
+              <Ionicons name="checkmark" size={14} color="#1565C0" />
+            ) : (
+              <Text style={styles.progressStepNumberActive}>1</Text>
+            )}
+          </View>
+          <Text style={[styles.progressStepLabel, step === 1 ? styles.progressStepLabelActive : styles.progressStepLabelMuted]}>
+            Seus Dados
+          </Text>
+        </View>
+
+        <View style={[styles.progressLine, step > 1 && styles.progressLineDone]} />
+
+        <View style={styles.progressStepWrap}>
+          <View
+            style={[
+              styles.progressStepCircle,
+              step === 2 ? styles.progressStepCircleActive : styles.progressStepCircleMuted,
+            ]}>
+            <Text style={step === 2 ? styles.progressStepNumberActive : styles.progressStepNumberMuted}>2</Text>
+          </View>
+          <Text
+            style={[
+              styles.progressStepLabel,
+              step === 2 ? styles.progressStepLabelActive : styles.progressStepLabelMuted,
+            ]}>
+            Pagamento
+          </Text>
+        </View>
+      </View>
+
+      <Text style={styles.progressCaption}>Etapa {step} de 2</Text>
+    </View>
+  );
+}
+
+function DonationInputField({
+  label,
+  icon,
+  value,
+  onChangeText,
+  onFocus,
+  onBlur,
+  placeholder,
+  valid,
+  focused,
+  error,
+  ...inputProps
+}: {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  value: string;
+  onChangeText: (value: string) => void;
+  onFocus: () => void;
+  onBlur: () => void;
+  placeholder: string;
+  valid: boolean;
+  focused?: boolean;
+  error?: string;
+} & TextInputProps) {
+  const borderColor = error
+    ? '#EF4444'
+    : valid && value
+      ? '#22C55E'
+      : focused
+        ? '#1565C0'
+        : '#E8EEF9';
+  const iconColor = error
+    ? '#EF4444'
+    : valid && value
+      ? '#22C55E'
+      : focused
+        ? '#1565C0'
+        : '#9BACC8';
+
+  return (
+    <View>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <View style={[styles.fieldWrap, { borderColor, backgroundColor: focused ? '#EEF4FF' : '#fff' }]}> 
+        <Ionicons name={icon} size={18} color={iconColor} style={{ marginTop: 1 }} />
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          placeholder={placeholder}
+          placeholderTextColor="#9BACC8"
+          style={styles.fieldInput}
+          {...inputProps}
+        />
+        {valid && value.length > 0 && !error ? (
+          <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
+        ) : null}
+      </View>
+
+      {error ? (
+        <View style={styles.fieldErrorRow}>
+          <Ionicons name="alert-circle" size={13} color="#EF4444" />
+          <Text style={styles.fieldErrorText}>{error}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -183,53 +336,78 @@ function TelaValor({
   const corMetodo = metodo === 'pix' ? VERDE : AZUL;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F5F5F5' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={styles.formScreen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Header onBack={onBack} />
-      <ScrollView contentContainerStyle={[styles.formContent, { paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled">
-        <View style={[styles.metodoBanner, { backgroundColor: corMetodo }]}>
-          <Text style={styles.metodoBannerIcone}>{metodo === 'pix' ? '⚡' : metodo === 'boleto' ? '🏦' : '💳'}</Text>
-          <View>
-            <Text style={styles.metodoBannerLabel}>DOAÇÃO VIA</Text>
-            <Text style={styles.metodoBannerTitulo}>{metodo === 'pix' ? 'PIX' : metodo === 'boleto' ? 'Boleto' : 'Cartão de Crédito'}</Text>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        <View style={styles.formOuterWrap}>
+          <View style={styles.formCard}>
+            <View style={[styles.metodoBanner, { backgroundColor: corMetodo }]}> 
+              <Text style={styles.metodoBannerIcone}>{metodo === 'pix' ? '⚡' : metodo === 'boleto' ? '🏦' : '💳'}</Text>
+              <View>
+                <Text style={styles.metodoBannerLabel}>DOAÇÃO VIA</Text>
+                <Text style={styles.metodoBannerTitulo}>
+                  {metodo === 'pix' ? 'PIX' : metodo === 'boleto' ? 'Boleto' : 'Cartão de Crédito'}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.formTitulo}>Qual o valor da doação?</Text>
+            <Text style={styles.formSubtitulo}>Escolha um valor sugerido ou informe outro.</Text>
+
+            <View style={styles.sugestoesWrap}>
+              {sugestoes.map((v) => (
+                <TouchableOpacity
+                  key={v}
+                  style={[
+                    styles.sugestaoBtn,
+                    valorSelecionado === v && {
+                      backgroundColor: AZUL,
+                      borderColor: AZUL,
+                    },
+                  ]}
+                  onPress={() => {
+                    setValorSelecionado(v);
+                    setValorCustom('');
+                    setErro('');
+                  }}
+                  activeOpacity={0.75}>
+                  <Text style={[styles.sugestaoText, valorSelecionado === v && { color: '#fff' }]}> 
+                    R$ {v}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.inputLabel}>Outro valor</Text>
+            <View style={styles.valorInputWrap}>
+              <Text style={styles.valorPrefix}>R$</Text>
+              <TextInput
+                style={styles.valorInput}
+                value={valorCustom}
+                onChangeText={(v) => {
+                  setValorCustom(v.replace(/[^0-9,]/g, ''));
+                  setValorSelecionado(null);
+                  setErro('');
+                }}
+                placeholder="0,00"
+                placeholderTextColor="#9BACC8"
+                keyboardType="decimal-pad"
+              />
+            </View>
+
+            {erro ? <Text style={styles.erroText}>{erro}</Text> : null}
+            {!erro && erroExterno ? <Text style={styles.erroText}>{erroExterno}</Text> : null}
+
+            <TouchableOpacity style={styles.btnPrimario} onPress={handleContinuar}>
+              <Text style={styles.btnPrimarioText}>CONTINUAR</Text>
+            </TouchableOpacity>
           </View>
         </View>
-
-        <Text style={styles.formTitulo}>Qual o valor da doação?</Text>
-        <Text style={styles.formSubtitulo}>Escolha um valor sugerido ou informe outro.</Text>
-
-        <View style={styles.sugestoesWrap}>
-          {sugestoes.map((v) => (
-            <TouchableOpacity
-              key={v}
-              style={[styles.sugestaoBtn, valorSelecionado === v && { backgroundColor: AZUL, borderColor: AZUL }]}
-              onPress={() => { setValorSelecionado(v); setValorCustom(''); setErro(''); }}
-              activeOpacity={0.75}>
-              <Text style={[styles.sugestaoText, valorSelecionado === v && { color: '#fff' }]}>
-                R$ {v}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.inputLabel}>Outro valor</Text>
-        <View style={styles.valorInputWrap}>
-          <Text style={styles.valorPrefix}>R$</Text>
-          <TextInput
-            style={styles.valorInput}
-            value={valorCustom}
-            onChangeText={(v) => { setValorCustom(v.replace(/[^0-9,]/g, '')); setValorSelecionado(null); setErro(''); }}
-            placeholder="0,00"
-            placeholderTextColor="#aaa"
-            keyboardType="decimal-pad"
-          />
-        </View>
-
-        {erro ? <Text style={styles.erroText}>{erro}</Text> : null}
-        {!erro && erroExterno ? <Text style={styles.erroText}>{erroExterno}</Text> : null}
-
-        <TouchableOpacity style={styles.btnPrimario} onPress={handleContinuar}>
-          <Text style={styles.btnPrimarioText}>CONTINUAR</Text>
-        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -248,7 +426,14 @@ function TelaDados({
 }) {
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<DadosDoador>({ nome: '', email: '', telefone: '', cpf: '' });
-  const [erro, setErro] = useState('');
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<Record<DoadorField, boolean>>({
+    nome: false,
+    email: false,
+    telefone: false,
+    cpf: false,
+  });
+  const [focusedField, setFocusedField] = useState<DoadorField | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
@@ -256,41 +441,176 @@ function TelaDados({
     }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  function validate(data: DadosDoador): FormErrors {
+    const newErrors: FormErrors = {};
+    if (!data.nome.trim() || data.nome.trim().length < 3) {
+      newErrors.nome = 'Por favor, informe seu nome completo';
+    }
+    if (!validatePhone(data.telefone)) {
+      newErrors.telefone = 'Telefone inválido. Use (00) 00000-0000';
+    }
+    if (!validateCPF(data.cpf)) {
+      newErrors.cpf = 'CPF inválido. Informe os 11 dígitos';
+    }
+    if (!validateEmail(data.email)) {
+      newErrors.email = 'E-mail inválido';
+    }
+    setErrors(newErrors);
+    return newErrors;
+  }
+
+  function setField(field: DoadorField, value: string) {
+    let nextValue = value;
+    if (field === 'telefone') nextValue = formatTelefone(value);
+    if (field === 'cpf') nextValue = formatCpf(value);
+
+    const next = { ...form, [field]: nextValue };
+    setForm(next);
+    if (touched[field]) {
+      validate(next);
+    }
+  }
+
+  function isValid(field: DoadorField) {
+    if (field === 'nome') return form.nome.trim().length >= 3;
+    if (field === 'telefone') return validatePhone(form.telefone);
+    if (field === 'cpf') return validateCPF(form.cpf);
+    if (field === 'email') return validateEmail(form.email);
+    return false;
+  }
+
+  function touchField(field: DoadorField) {
+    setTouched((current) => ({ ...current, [field]: true }));
+  }
+
   function handleContinuar() {
-    if (!form.nome.trim()) return setErro('Informe o nome completo.');
-    if (!form.email.trim() || !form.email.includes('@')) return setErro('Informe um e-mail válido.');
-    if (form.telefone.replace(/\D/g, '').length < 10) return setErro('Informe um telefone válido.');
-    if (form.cpf.replace(/\D/g, '').length < 11) return setErro('Informe um CPF válido.');
-    setErro('');
+    const allTouched: Record<DoadorField, boolean> = {
+      nome: true,
+      email: true,
+      telefone: true,
+      cpf: true,
+    };
+    setTouched(allTouched);
+    const validationErrors = validate(form);
+    if (Object.keys(validationErrors).length > 0) return;
+
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(form)).catch(() => {});
     onContinuar(form);
   }
 
+  const paymentText =
+    metodo === 'pix' ? 'QR Code PIX' : metodo === 'boleto' ? 'boleto' : 'pagamento';
+
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F5F5F5' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Header onBack={onBack} />
-      <ScrollView contentContainerStyle={[styles.formContent, { paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled">
-        <Text style={styles.formTitulo}>Seus dados</Text>
-        <Text style={styles.formSubtitulo}>Necessários para emissão do {metodo === 'pix' ? 'QR Code PIX' : metodo === 'boleto' ? 'boleto' : 'pagamento'}.</Text>
+    <KeyboardAvoidingView
+      style={styles.formScreen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <StatusBar style="light" />
+      <DonationProgressHeader onBack={onBack} step={1} />
 
-        <Text style={styles.inputLabel}>Nome completo *</Text>
-        <TextInput style={styles.input} value={form.nome} onChangeText={(v) => setForm({ ...form, nome: v })} placeholder="Seu nome completo" placeholderTextColor="#aaa" autoCapitalize="words" />
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 36 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        <View style={styles.formOuterWrap}>
+          <View style={styles.formCard}>
+            <View style={styles.formIntroRow}>
+              <View style={styles.formIntroIcon}>
+                <Text style={styles.formIntroIconText}>💛</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.formCardTitle}>Faça uma doação</Text>
+                <Text style={styles.formCardSubtitle}>
+                  Seus dados ajudam a garantir segurança e transparência
+                </Text>
+              </View>
+            </View>
 
-        <Text style={styles.inputLabel}>E-mail *</Text>
-        <TextInput style={styles.input} value={form.email} onChangeText={(v) => setForm({ ...form, email: v })} placeholder="seu@email.com" placeholderTextColor="#aaa" keyboardType="email-address" autoCapitalize="none" />
+            <View style={styles.fieldsContainer}>
+              <DonationInputField
+                label="Nome completo"
+                icon="person-outline"
+                value={form.nome}
+                onChangeText={(value) => setField('nome', value)}
+                onFocus={() => {
+                  setFocusedField('nome');
+                  touchField('nome');
+                }}
+                onBlur={() => setFocusedField(null)}
+                placeholder="Seu nome completo"
+                autoCapitalize="words"
+                valid={isValid('nome')}
+                focused={focusedField === 'nome'}
+                error={touched.nome ? errors.nome : undefined}
+              />
 
-        <Text style={styles.inputLabel}>Telefone *</Text>
-        <TextInput style={styles.input} value={form.telefone} onChangeText={(v) => setForm({ ...form, telefone: formatTelefone(v) })} placeholder="(81) 99999-9999" placeholderTextColor="#aaa" keyboardType="phone-pad" />
+              <DonationInputField
+                label="Telefone"
+                icon="call-outline"
+                value={form.telefone}
+                onChangeText={(value) => setField('telefone', value)}
+                onFocus={() => {
+                  setFocusedField('telefone');
+                  touchField('telefone');
+                }}
+                onBlur={() => setFocusedField(null)}
+                placeholder="(00) 00000-0000"
+                keyboardType="phone-pad"
+                valid={isValid('telefone')}
+                focused={focusedField === 'telefone'}
+                error={touched.telefone ? errors.telefone : undefined}
+              />
 
-        <Text style={styles.inputLabel}>CPF *</Text>
-        <TextInput style={styles.input} value={form.cpf} onChangeText={(v) => setForm({ ...form, cpf: formatCpf(v) })} placeholder="000.000.000-00" placeholderTextColor="#aaa" keyboardType="numeric" />
+              <DonationInputField
+                label="CPF"
+                icon="card-outline"
+                value={form.cpf}
+                onChangeText={(value) => setField('cpf', value)}
+                onFocus={() => {
+                  setFocusedField('cpf');
+                  touchField('cpf');
+                }}
+                onBlur={() => setFocusedField(null)}
+                placeholder="000.000.000-00"
+                keyboardType="numeric"
+                valid={isValid('cpf')}
+                focused={focusedField === 'cpf'}
+                error={touched.cpf ? errors.cpf : undefined}
+              />
 
-        {erro ? <Text style={styles.erroText}>{erro}</Text> : null}
+              <DonationInputField
+                label="E-mail"
+                icon="mail-outline"
+                value={form.email}
+                onChangeText={(value) => setField('email', value)}
+                onFocus={() => {
+                  setFocusedField('email');
+                  touchField('email');
+                }}
+                onBlur={() => setFocusedField(null)}
+                placeholder="seu@email.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                valid={isValid('email')}
+                focused={focusedField === 'email'}
+                error={touched.email ? errors.email : undefined}
+              />
+            </View>
 
-        <TouchableOpacity style={styles.btnPrimario} onPress={handleContinuar}>
-          <Text style={styles.btnPrimarioText}>CONTINUAR</Text>
-        </TouchableOpacity>
-        <Text style={styles.segurancaText}>🔒 Seus dados são protegidos e criptografados</Text>
+            <View style={styles.securityInfoBox}>
+              <Text style={styles.securityIcon}>🔒</Text>
+              <Text style={styles.securityInfoText}>
+                Seus dados são protegidos e usados apenas para identificação da doação via{' '}
+                {paymentText}.
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.yellowContinueButton} onPress={handleContinuar}>
+            <Text style={styles.yellowContinueText}>Continuar</Text>
+            <Ionicons name="arrow-forward" size={18} color="#1565C0" />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -678,53 +998,368 @@ export default function DoacaoScreen() {
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  formScreen: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+  formOuterWrap: {
+    paddingHorizontal: 16,
+    marginTop: -12,
+  },
+  formCard: {
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 16,
+    borderWidth: 1,
+    borderColor: '#EAF0FA',
+    shadowColor: '#1565C0',
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
+  },
+  formIntroRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+    alignItems: 'center',
+  },
+  formIntroIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: AMARELO,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  formIntroIconText: {
+    fontSize: 15,
+  },
+  formCardTitle: {
+    color: AZUL_ESCURO,
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  formCardSubtitle: {
+    marginTop: 3,
+    color: '#6B87B0',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  fieldsContainer: {
+    gap: 12,
+  },
+  fieldLabel: {
+    color: TEXTO,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  fieldWrap: {
+    minHeight: 54,
+    borderRadius: 16,
+    borderWidth: 2,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  fieldInput: {
+    flex: 1,
+    fontSize: 14,
+    color: TEXTO,
+    paddingVertical: 0,
+  },
+  fieldErrorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  fieldErrorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  securityInfoBox: {
+    marginTop: 16,
+    borderRadius: 12,
+    backgroundColor: '#F0F9FF',
+    padding: 12,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  securityIcon: {
+    fontSize: 14,
+    marginTop: 1,
+  },
+  securityInfoText: {
+    flex: 1,
+    color: '#0D47A1',
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  yellowContinueButton: {
+    marginTop: 14,
+    backgroundColor: AMARELO,
+    borderRadius: 18,
+    minHeight: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    shadowColor: AMARELO,
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  yellowContinueText: {
+    color: AZUL_ESCURO,
+    fontSize: 15,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+
+  progressHeader: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: AZUL,
+  },
+  progressTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  progressBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  progressTitle: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  progressStepsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  progressStepWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  progressStepCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressStepCircleActive: {
+    backgroundColor: AMARELO,
+  },
+  progressStepCircleMuted: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  progressStepNumberActive: {
+    color: AZUL_ESCURO,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  progressStepNumberMuted: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  progressStepLabel: {
+    fontSize: 12,
+  },
+  progressStepLabelActive: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  progressStepLabelMuted: {
+    color: 'rgba(255,255,255,0.65)',
+    fontWeight: '500',
+  },
+  progressLine: {
+    height: 2,
+    flex: 1,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  progressLineDone: {
+    backgroundColor: AMARELO,
+  },
+  progressCaption: {
+    marginTop: 10,
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+
   header: {
     backgroundColor: AZUL,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 18,
+    paddingBottom: 14,
   },
-  backBtn: { width: 36, alignItems: 'center', justifyContent: 'center' },
-  backArrow: { color: '#fff', fontSize: 24, fontWeight: '300' },
-  logoImage: { width: 110, height: 60 },
+  backBtn: {
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  backArrow: { color: '#fff', fontSize: 22, fontWeight: '400' },
+  logoImage: { width: 112, height: 44, marginLeft: -8 },
 
   metodoContent: { paddingHorizontal: 20, paddingTop: 8 },
-  metodoHero: { paddingVertical: 20, gap: 8 },
-  metodoOverline: { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
-  metodoTitulo: { color: '#fff', fontSize: 34, fontWeight: '900', lineHeight: 40 },
-  metodoSubtitulo: { color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 19, maxWidth: '85%' },
-  metodosLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 12, fontWeight: '700', letterSpacing: 0.8, marginTop: 8, marginBottom: 12 },
-  metodoCard: { backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
-  metodoIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  metodoIcone: { fontSize: 22 },
+  metodoHero: { paddingVertical: 12, gap: 8 },
+  metodoOverline: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.3,
+  },
+  metodoTitulo: {
+    color: '#fff',
+    fontSize: 30,
+    fontWeight: '900',
+    lineHeight: 35,
+  },
+  metodoSubtitulo: {
+    color: 'rgba(255,255,255,0.78)',
+    fontSize: 13,
+    lineHeight: 19,
+    maxWidth: '88%',
+  },
+  metodosLabel: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  metodoCard: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  metodoIconWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metodoIcone: { fontSize: 20 },
   metodoCardTitulo: { color: '#fff', fontSize: 15, fontWeight: '800' },
-  metodoCardDesc: { color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 2, lineHeight: 16 },
-  metodoArrow: { color: 'rgba(255,255,255,0.5)', fontSize: 22, fontWeight: '300' },
+  metodoCardDesc: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  metodoArrow: { color: 'rgba(255,255,255,0.62)', fontSize: 20, fontWeight: '400' },
 
   formContent: { paddingHorizontal: 20, paddingTop: 8 },
-  metodoBanner: { borderRadius: 14, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20 },
+  metodoBanner: {
+    borderRadius: 14,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
   metodoBannerIcone: { fontSize: 28 },
-  metodoBannerLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '700', letterSpacing: 1.2 },
-  metodoBannerTitulo: { color: '#fff', fontSize: 18, fontWeight: '900' },
-  formTitulo: { fontSize: 20, fontWeight: '900', color: '#1a1a1a', marginBottom: 4 },
-  formSubtitulo: { fontSize: 13, color: '#666', lineHeight: 18, marginBottom: 20 },
+  metodoBannerLabel: {
+    color: 'rgba(255,255,255,0.76)',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.1,
+  },
+  metodoBannerTitulo: { color: '#fff', fontSize: 17, fontWeight: '900' },
+  formTitulo: { fontSize: 22, fontWeight: '900', color: TEXTO, marginBottom: 4 },
+  formSubtitulo: { fontSize: 13, color: '#6B87B0', lineHeight: 18, marginBottom: 16 },
 
   sugestoesWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
-  sugestaoBtn: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 30, borderWidth: 2, borderColor: AZUL },
+  sugestaoBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: AZUL,
+    backgroundColor: '#fff',
+  },
   sugestaoText: { color: AZUL, fontWeight: '800', fontSize: 14 },
 
-  valorInputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#E0E0E0', paddingHorizontal: 14, marginBottom: 4 },
-  valorPrefix: { fontSize: 16, fontWeight: '700', color: '#555', marginRight: 6 },
-  valorInput: { flex: 1, paddingVertical: 13, fontSize: 16, color: '#1a1a1a' },
+  valorInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E8EEF9',
+    paddingHorizontal: 14,
+    marginBottom: 4,
+  },
+  valorPrefix: { fontSize: 16, fontWeight: '700', color: '#6B87B0', marginRight: 6 },
+  valorInput: { flex: 1, paddingVertical: 13, fontSize: 16, color: TEXTO },
 
-  inputLabel: { fontSize: 12, fontWeight: '700', color: '#555', letterSpacing: 0.3, marginBottom: 4, marginTop: 8 },
-  input: { backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: '#1a1a1a', borderWidth: 1, borderColor: '#E0E0E0' },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6B87B0',
+    letterSpacing: 0.3,
+    marginBottom: 4,
+    marginTop: 8,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    fontSize: 15,
+    color: TEXTO,
+    borderWidth: 2,
+    borderColor: '#E8EEF9',
+  },
   erroText: { color: '#EF4444', fontSize: 13, fontWeight: '600', marginTop: 8 },
-  btnPrimario: { backgroundColor: AZUL, borderRadius: 30, paddingVertical: 15, alignItems: 'center', marginTop: 24 },
-  btnPrimarioText: { color: '#fff', fontWeight: '800', fontSize: 14, letterSpacing: 0.8 },
-  segurancaText: { color: '#888', fontSize: 12, textAlign: 'center', marginTop: 12 },
+  btnPrimario: {
+    backgroundColor: AMARELO,
+    borderRadius: 18,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  btnPrimarioText: {
+    color: AZUL_ESCURO,
+    fontWeight: '800',
+    fontSize: 15,
+    letterSpacing: 0.5,
+  },
+  segurancaText: { color: '#6B87B0', fontSize: 12, textAlign: 'center', marginTop: 12 },
 
   cartaoPreview: { backgroundColor: AZUL, borderRadius: 16, padding: 20, marginBottom: 16, gap: 12 },
   cartaoPreviewBandeira: { fontSize: 28 },
