@@ -1,25 +1,28 @@
 import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
-  View,
-  Text,
+  ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
+  Text,
   TextInput,
-  Platform,
-  StatusBar as RNStatusBar,
-  KeyboardAvoidingView,
-  ActivityIndicator,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useInscricoes } from '@/contexts/InscricoesContext';
-import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 
-const STATUSBAR_HEIGHT = Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 24) : 44;
-const AZUL = '#354FB8';
+const AZUL = '#1565C0';
+const AZUL_ESCURO = '#1565C0';
+const AMARELO = '#FFD600';
+const BG = '#F4F7FF';
+const TEXTO = '#1A2D5A';
+const SUBTEXTO = '#6B87B0';
 
 function formatarCPF(valor: string): string {
   const numeros = valor.replace(/\D/g, '').slice(0, 11);
@@ -33,15 +36,15 @@ function validarCPF(cpf: string): boolean {
   const n = cpf.replace(/\D/g, '');
   if (n.length !== 11 || /^(\d)\1{10}$/.test(n)) return false;
   let soma = 0;
-  for (let i = 0; i < 9; i++) soma += parseInt(n[i]) * (10 - i);
+  for (let i = 0; i < 9; i += 1) soma += Number.parseInt(n[i], 10) * (10 - i);
   let resto = (soma * 10) % 11;
   if (resto === 10 || resto === 11) resto = 0;
-  if (resto !== parseInt(n[9])) return false;
+  if (resto !== Number.parseInt(n[9], 10)) return false;
   soma = 0;
-  for (let i = 0; i < 10; i++) soma += parseInt(n[i]) * (11 - i);
+  for (let i = 0; i < 10; i += 1) soma += Number.parseInt(n[i], 10) * (11 - i);
   resto = (soma * 10) % 11;
   if (resto === 10 || resto === 11) resto = 0;
-  return resto === parseInt(n[10]);
+  return resto === Number.parseInt(n[10], 10);
 }
 
 function formatarTelefone(valor: string): string {
@@ -56,11 +59,41 @@ function formatarTelefone(valor: string): string {
     .replace(/(\d{5})(\d)/, '$1-$2');
 }
 
+function Header({ onBack }: { onBack: () => void }) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={[styles.header, { paddingTop: insets.top + 10 }]}> 
+      <View style={styles.headerCircleLarge} pointerEvents="none" />
+      <View style={styles.headerCircleSmall} pointerEvents="none" />
+
+      <View style={styles.headerTopRow}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <Ionicons name="chevron-back" size={20} color="#fff" />
+        </TouchableOpacity>
+
+        <Image
+          source={require('@/assets/images/logo-branca.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
+
+        <View style={styles.backButton} />
+      </View>
+
+      <Text style={styles.headerOverline}>NOVO CADASTRO</Text>
+      <Text style={styles.headerTitle}>Crie sua conta</Text>
+      <Text style={styles.headerSubtitle}>
+        Cadastre-se para acompanhar inscrições e receber novidades.
+      </Text>
+    </View>
+  );
+}
+
 export default function CadastroScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { registrar } = useInscricoes();
-  const keyboardHeight = useKeyboardHeight();
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -85,10 +118,14 @@ export default function CadastroScreen() {
 
   async function handleCadastrar() {
     const mensagemErro = validar();
-    if (mensagemErro) return setErro(mensagemErro);
+    if (mensagemErro) {
+      setErro(mensagemErro);
+      return;
+    }
 
     setErro('');
     setCarregando(true);
+
     try {
       await registrar({
         nome: nome.trim(),
@@ -97,9 +134,10 @@ export default function CadastroScreen() {
         telefone: telefone.replace(/\D/g, ''),
         senha,
       });
+
       router.replace('/perfil' as any);
     } catch (e: any) {
-      setErro(e.message ?? 'Não foi possível criar a conta. Tente novamente.');
+      setErro(e?.message ?? 'Não foi possível criar a conta. Tente novamente.');
     } finally {
       setCarregando(false);
     }
@@ -107,151 +145,193 @@ export default function CadastroScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: AZUL }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar style="light" translucent />
 
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: STATUSBAR_HEIGHT + 8 }]}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => router.canGoBack() ? router.back() : router.replace('/login')}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.backArrow}>←</Text>
-        </TouchableOpacity>
-        <Image
-          source={require('@/assets/images/logo-branca.png')}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
-        <View style={styles.backBtn} />
-      </View>
+      <Header
+        onBack={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/login' as any);
+          }
+        }}
+      />
 
       <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          // { paddingBottom: keyboardHeight > 0 ? insets.bottom : 0 },
-        ]}
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
+        contentContainerStyle={{ paddingBottom: insets.bottom + 26 }}>
+        <View style={styles.formWrap}>
+          <View style={styles.formCard}>
+            <View style={styles.formTitleRow}>
+              <View style={styles.formTitleIconWrap}>
+                <Ionicons name="person-add-outline" size={17} color={AZUL} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.formTitle}>Criar conta</Text>
+                <Text style={styles.formSubtitle}>Preencha seus dados para começar.</Text>
+              </View>
+            </View>
 
-        {/* Hero */}
-        <View style={styles.hero}>
-          <Text style={styles.heroOverline}>NOVO CADASTRO</Text>
-          <Text style={styles.heroTitulo}>Crie sua{'\n'}conta</Text>
-          <Text style={styles.heroSubtitulo}>
-            Cadastre-se para acompanhar suas inscrições e receber novidades dos nossos cursos.
-          </Text>
-        </View>
+            <Text style={styles.inputLabel}>Nome completo</Text>
+            <View style={styles.inputWrap}>
+              <Ionicons name="person-outline" size={17} color="#9BACC8" />
+              <TextInput
+                style={styles.input}
+                value={nome}
+                onChangeText={(v) => {
+                  setNome(v);
+                  if (erro) setErro('');
+                }}
+                placeholder="Seu nome completo"
+                placeholderTextColor="#9BACC8"
+                autoCapitalize="words"
+                autoCorrect={false}
+                returnKeyType="next"
+              />
+            </View>
 
-        {/* Formulário */}
-        <View style={styles.form}>
-          <Text style={styles.inputLabel}>Nome completo</Text>
-          <TextInput
-            style={styles.input}
-            value={nome}
-            onChangeText={(v) => { setNome(v); setErro(''); }}
-            placeholder="Seu nome completo"
-            placeholderTextColor="rgba(255,255,255,0.35)"
-            autoCapitalize="words"
-            autoCorrect={false}
-            returnKeyType="next"
-          />
+            <Text style={[styles.inputLabel, { marginTop: 14 }]}>E-mail</Text>
+            <View style={styles.inputWrap}>
+              <Ionicons name="mail-outline" size={17} color="#9BACC8" />
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={(v) => {
+                  setEmail(v);
+                  if (erro) setErro('');
+                }}
+                placeholder="seu@email.com"
+                placeholderTextColor="#9BACC8"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+              />
+            </View>
 
-          <Text style={[styles.inputLabel, { marginTop: 16 }]}>E-mail</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={(v) => { setEmail(v); setErro(''); }}
-            placeholder="seu@email.com"
-            placeholderTextColor="rgba(255,255,255,0.35)"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="next"
-          />
+            <Text style={[styles.inputLabel, { marginTop: 14 }]}>CPF</Text>
+            <View style={styles.inputWrap}>
+              <Ionicons name="card-outline" size={17} color="#9BACC8" />
+              <TextInput
+                style={styles.input}
+                value={cpf}
+                onChangeText={(v) => {
+                  setCpf(formatarCPF(v));
+                  if (erro) setErro('');
+                }}
+                placeholder="000.000.000-00"
+                placeholderTextColor="#9BACC8"
+                keyboardType="number-pad"
+                returnKeyType="next"
+              />
+            </View>
 
-          <Text style={[styles.inputLabel, { marginTop: 16 }]}>CPF</Text>
-          <TextInput
-            style={styles.input}
-            value={cpf}
-            onChangeText={(v) => { setCpf(formatarCPF(v)); setErro(''); }}
-            placeholder="000.000.000-00"
-            placeholderTextColor="rgba(255,255,255,0.35)"
-            keyboardType="number-pad"
-            returnKeyType="next"
-          />
+            <Text style={[styles.inputLabel, { marginTop: 14 }]}>Telefone (opcional)</Text>
+            <View style={styles.inputWrap}>
+              <Ionicons name="call-outline" size={17} color="#9BACC8" />
+              <TextInput
+                style={styles.input}
+                value={telefone}
+                onChangeText={(v) => {
+                  setTelefone(formatarTelefone(v));
+                  if (erro) setErro('');
+                }}
+                placeholder="(00) 00000-0000"
+                placeholderTextColor="#9BACC8"
+                keyboardType="phone-pad"
+                returnKeyType="next"
+              />
+            </View>
 
-          <Text style={[styles.inputLabel, { marginTop: 16 }]}>Telefone <Text style={styles.opcional}>(opcional)</Text></Text>
-          <TextInput
-            style={styles.input}
-            value={telefone}
-            onChangeText={(v) => { setTelefone(formatarTelefone(v)); setErro(''); }}
-            placeholder="(00) 00000-0000"
-            placeholderTextColor="rgba(255,255,255,0.35)"
-            keyboardType="phone-pad"
-            returnKeyType="next"
-          />
+            <Text style={[styles.inputLabel, { marginTop: 14 }]}>Senha</Text>
+            <View style={styles.inputWrap}>
+              <Ionicons name="lock-closed-outline" size={17} color="#9BACC8" />
+              <TextInput
+                style={styles.input}
+                value={senha}
+                onChangeText={(v) => {
+                  setSenha(v);
+                  if (erro) setErro('');
+                }}
+                placeholder="Mínimo 8 caracteres"
+                placeholderTextColor="#9BACC8"
+                secureTextEntry={!senhaVisivel}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setSenhaVisivel((old) => !old)}>
+                <Ionicons
+                  name={senhaVisivel ? 'eye-off-outline' : 'eye-outline'}
+                  size={18}
+                  color="#6B87B0"
+                />
+              </TouchableOpacity>
+            </View>
 
-          <Text style={[styles.inputLabel, { marginTop: 16 }]}>Senha</Text>
-          <View style={styles.senhaWrap}>
-            <TextInput
-              style={[styles.input, styles.inputSenha]}
-              value={senha}
-              onChangeText={(v) => { setSenha(v); setErro(''); }}
-              placeholder="Mínimo 8 caracteres"
-              placeholderTextColor="rgba(255,255,255,0.35)"
-              secureTextEntry={!senhaVisivel}
-              returnKeyType="next"
-            />
-            <TouchableOpacity
-              style={styles.senhaToggle}
-              onPress={() => setSenhaVisivel((v) => !v)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.senhaToggleText}>{senhaVisivel ? '🙈' : '👁️'}</Text>
-            </TouchableOpacity>
+            <Text style={[styles.inputLabel, { marginTop: 14 }]}>Confirmar senha</Text>
+            <View style={styles.inputWrap}>
+              <Ionicons name="shield-checkmark-outline" size={17} color="#9BACC8" />
+              <TextInput
+                style={styles.input}
+                value={confirmarSenha}
+                onChangeText={(v) => {
+                  setConfirmarSenha(v);
+                  if (erro) setErro('');
+                }}
+                placeholder="Repita a senha"
+                placeholderTextColor="#9BACC8"
+                secureTextEntry={!confirmarSenhaVisivel}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={handleCadastrar}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setConfirmarSenhaVisivel((old) => !old)}>
+                <Ionicons
+                  name={confirmarSenhaVisivel ? 'eye-off-outline' : 'eye-outline'}
+                  size={18}
+                  color="#6B87B0"
+                />
+              </TouchableOpacity>
+            </View>
+
+            {erro ? (
+              <View style={styles.errorRow}>
+                <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                <Text style={styles.errorText}>{erro}</Text>
+              </View>
+            ) : null}
           </View>
-
-          <Text style={[styles.inputLabel, { marginTop: 16 }]}>Confirmar senha</Text>
-          <View style={styles.senhaWrap}>
-            <TextInput
-              style={[styles.input, styles.inputSenha]}
-              value={confirmarSenha}
-              onChangeText={(v) => { setConfirmarSenha(v); setErro(''); }}
-              placeholder="Repita a senha"
-              placeholderTextColor="rgba(255,255,255,0.35)"
-              secureTextEntry={!confirmarSenhaVisivel}
-              returnKeyType="done"
-              onSubmitEditing={handleCadastrar}
-            />
-            <TouchableOpacity
-              style={styles.senhaToggle}
-              onPress={() => setConfirmarSenhaVisivel((v) => !v)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.senhaToggleText}>{confirmarSenhaVisivel ? '🙈' : '👁️'}</Text>
-            </TouchableOpacity>
-          </View>
-
-          {erro ? <Text style={styles.erroText}>{erro}</Text> : null}
 
           <TouchableOpacity
-            style={[styles.btnCadastrar, carregando && { opacity: 0.7 }]}
+            style={[styles.primaryButton, carregando && { opacity: 0.7 }]}
             onPress={handleCadastrar}
-            disabled={carregando}
-            activeOpacity={0.8}>
+            disabled={carregando}>
             {carregando ? (
               <ActivityIndicator color={AZUL} />
             ) : (
-              <Text style={styles.btnCadastrarText}>CRIAR CONTA</Text>
+              <>
+                <Text style={styles.primaryButtonText}>Criar conta</Text>
+                <Ionicons name="arrow-forward" size={17} color={AZUL} />
+              </>
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.btnJaTenho}
-            onPress={() => router.replace('/login')}
-            activeOpacity={0.8}>
-            <Text style={styles.btnJaTenhoText}>Já tenho conta → Entrar</Text>
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => router.replace('/login' as any)}>
+            <Text style={styles.secondaryButtonText}>Já tenho conta</Text>
           </TouchableOpacity>
+
+          <Text style={styles.footnote}>
+            Com sua conta criada, você acompanha suas pré-inscrições no app.
+          </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -259,126 +339,205 @@ export default function CadastroScreen() {
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+
   header: {
+    backgroundColor: AZUL,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    paddingHorizontal: 18,
+    paddingBottom: 22,
+    overflow: 'hidden',
+  },
+  headerCircleLarge: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(111, 196, 255, 0.16)',
+    right: -45,
+    top: -25,
+  },
+  headerCircleSmall: {
+    position: 'absolute',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: 'rgba(255, 214, 0, 0.18)',
+    right: 14,
+    top: 18,
+  },
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    marginBottom: 16,
   },
-  backBtn: {
+  backButton: {
     width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  backArrow: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '300',
   },
   logoImage: {
-    width: 110,
-    height: 60,
+    width: 112,
+    height: 42,
+    marginLeft: -8,
   },
-
-  scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
-  },
-
-  hero: {
-    paddingVertical: 28,
-    gap: 8,
-  },
-  heroOverline: {
-    color: 'rgba(255,255,255,0.55)',
+  headerOverline: {
+    color: 'rgba(255,255,255,0.72)',
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
+    marginBottom: 4,
   },
-  heroTitulo: {
+  headerTitle: {
     color: '#fff',
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: '900',
-    lineHeight: 42,
-  },
-  heroSubtitulo: {
-    color: 'rgba(255,255,255,0.65)',
-    fontSize: 14,
-    lineHeight: 20,
-    maxWidth: '85%',
-  },
-
-  form: {
-    gap: 0,
-  },
-  inputLabel: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    lineHeight: 35,
     marginBottom: 6,
   },
-  opcional: {
-    fontWeight: '400',
-    color: 'rgba(255,255,255,0.45)',
+  headerSubtitle: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 13,
+    lineHeight: 19,
+    maxWidth: '92%',
   },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 12,
+
+  formWrap: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: '#fff',
+    marginTop: -12,
+  },
+  formCard: {
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: '#EAF0FA',
+    shadowColor: AZUL,
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
-  senhaWrap: {
-    position: 'relative',
+  formTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
   },
-  inputSenha: {
-    paddingRight: 52,
-  },
-  senhaToggle: {
-    position: 'absolute',
-    right: 14,
-    top: 0,
-    bottom: 0,
+  formTitleIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: AMARELO,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  senhaToggleText: {
-    fontSize: 18,
-  },
-
-  erroText: {
-    color: '#ff8a80',
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 10,
-  },
-
-  btnCadastrar: {
-    backgroundColor: '#fff',
-    borderRadius: 30,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 28,
-  },
-  btnCadastrarText: {
-    color: AZUL,
+  formTitle: {
+    color: AZUL_ESCURO,
+    fontSize: 20,
     fontWeight: '900',
-    fontSize: 15,
-    letterSpacing: 1,
+  },
+  formSubtitle: {
+    marginTop: 3,
+    color: SUBTEXTO,
+    fontSize: 12,
+    lineHeight: 17,
   },
 
-  btnJaTenho: {
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  btnJaTenhoText: {
-    color: 'rgba(255,255,255,0.6)',
+  inputLabel: {
+    color: TEXTO,
     fontSize: 13,
     fontWeight: '600',
+    marginBottom: 6,
+  },
+  inputWrap: {
+    minHeight: 54,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#E8EEF9',
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#fff',
+  },
+  input: {
+    flex: 1,
+    fontSize: 14,
+    color: TEXTO,
+    paddingVertical: 0,
+  },
+  eyeButton: {
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  errorRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
+  primaryButton: {
+    marginTop: 14,
+    backgroundColor: AMARELO,
+    borderRadius: 18,
+    minHeight: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    shadowColor: AMARELO,
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  primaryButtonText: {
+    color: AZUL,
+    fontSize: 15,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  secondaryButton: {
+    marginTop: 10,
+    borderRadius: 18,
+    minHeight: 52,
+    borderWidth: 1.5,
+    borderColor: '#D6E2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  secondaryButtonText: {
+    color: AZUL,
+    fontSize: 14,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  footnote: {
+    marginTop: 12,
+    textAlign: 'center',
+    color: '#8CA6CC',
+    fontSize: 11,
+    lineHeight: 16,
+    paddingHorizontal: 6,
   },
 });

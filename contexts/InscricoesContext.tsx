@@ -39,6 +39,23 @@ async function fetchComTimeout(url: string, options?: RequestInit, timeoutMs = 1
   }
 }
 
+function extractAuthToken(payload: any): string | null {
+  const candidates = [
+    payload?.access_token,
+    payload?.token,
+    payload?.data?.access_token,
+    payload?.data?.token,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+  }
+
+  return null;
+}
+
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 
 export type Usuario = {
@@ -74,7 +91,7 @@ export type Turno = {
   max_students: number;
 };
 
-export type StatusInscricao = 'pendente' | 'confirmada' | 'cancelada';
+export type StatusInscricao = 'pendente' | 'confirmada' | 'cancelada' | 'concluida';
 
 export type Inscricao = {
   id: string;
@@ -100,6 +117,7 @@ export type DadosInscricao = Omit<Inscricao, 'id' | 'protocolo' | 'dataInscricao
 function mapStatus(apiStatus: string): StatusInscricao {
   switch (apiStatus) {
     case 'accepted':  return 'confirmada';
+    case 'finished':  return 'concluida';
     case 'rejected':
     case 'cancelled': return 'cancelada';
     default:          return 'pendente';
@@ -190,10 +208,14 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
   // ── Persiste token no AsyncStorage e no estado ───────────────────────────────
 
   const setAuthToken = useCallback(async (token: string | null) => {
-    setAuthTokenState(token);
+    const normalized = typeof token === 'string' ? token.trim() : '';
+    const tokenToSave = normalized.length > 0 ? normalized : null;
+
+    setAuthTokenState(tokenToSave);
+
     try {
-      if (token) {
-        await AsyncStorage.setItem(STORAGE_TOKEN_KEY, token);
+      if (tokenToSave) {
+        await AsyncStorage.setItem(STORAGE_TOKEN_KEY, tokenToSave);
       } else {
         await AsyncStorage.removeItem(STORAGE_TOKEN_KEY);
       }
@@ -208,8 +230,9 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
     (async () => {
       try {
         const saved = await AsyncStorage.getItem(STORAGE_TOKEN_KEY);
-        if (saved) {
-          setAuthTokenState(saved);
+        const normalized = (saved ?? '').trim();
+        if (normalized) {
+          setAuthTokenState(normalized);
         }
       } catch {
         // ignora erro de leitura
@@ -393,8 +416,9 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
       const json = await res.json();
 
       // Armazena token Sanctum se a API criou/vinculou uma conta
-      if (json.access_token) {
-        await setAuthToken(json.access_token);
+      const tokenFromResponse = extractAuthToken(json);
+      if (tokenFromResponse) {
+        await setAuthToken(tokenFromResponse);
       }
 
       // Usa o protocolo retornado pela API, ou gera um fallback local
@@ -527,7 +551,7 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
       throw new ApiError((json as any).message ?? 'Não foi possível criar a conta.');
     }
 
-    const token: string = (json as any).access_token ?? (json as any).token;
+    const token = extractAuthToken(json);
     if (!token) throw new ApiError('Conta criada, mas token não retornado. Faça login manualmente.');
     await setAuthToken(token);
   }
@@ -547,7 +571,11 @@ export function InscricoesProvider({ children }: { children: React.ReactNode }) 
       throw new Error((json as any).message ?? 'Credenciais inválidas.');
     }
 
-    const token: string = (json as any).access_token;
+    const token = extractAuthToken(json);
+    if (!token) {
+      throw new Error('Login realizado, mas o token não foi retornado pela API.');
+    }
+
     await setAuthToken(token);
     // carregarUsuario e carregarInscricoes são disparados pelo useEffect que observa authToken
   }

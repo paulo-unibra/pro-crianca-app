@@ -27,6 +27,7 @@ function AppNavigator() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="curso/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="doacao" options={{ headerShown: false, presentation: 'card' }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="cadastro" options={{ headerShown: false }} />

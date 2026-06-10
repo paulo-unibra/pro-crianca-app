@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { ImageSourcePropType } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import {
+  Alert,
   Image,
   ImageBackground,
   ScrollView,
@@ -13,34 +14,47 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useInscricoes } from '@/contexts/InscricoesContext';
 
 type CourseItem = {
   id: string;
   title: string;
   subtitle: string;
-  image: ImageSourcePropType;
+  imageSource: ImageSourcePropType;
 };
 
-const COURSE_ITEMS: CourseItem[] = [
+const COURSE_IMAGE_MAP: Record<number, string> = {
+  1: 'https://images.unsplash.com/photo-1759143103113-6696d40598bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
+  2: 'https://images.unsplash.com/photo-1703301287688-c9a306ebed99?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
+  3: 'https://images.unsplash.com/photo-1762475833776-fd57865db4d5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
+  4: 'https://images.unsplash.com/photo-1758874961449-37e171a41223?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
+  5: 'https://images.unsplash.com/photo-1767902012345-bd31f0ba76d7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
+};
+
+const FALLBACK_COURSE_ITEMS: CourseItem[] = [
   {
     id: '1',
     title: 'Música e Arte',
     subtitle: 'Desperte talentos',
-    image: require('@/assets/images/hero-crianca.jpg'),
+    imageSource: require('@/assets/images/hero-crianca.jpg'),
   },
   {
     id: '2',
     title: 'Reforço Escolar',
     subtitle: 'Aprender com apoio',
-    image: require('@/assets/images/hero-crianca.jpg'),
+    imageSource: require('@/assets/images/hero-crianca.jpg'),
   },
   {
     id: '3',
     title: 'Tecnologia',
     subtitle: 'Inclusão digital',
-    image: require('@/assets/images/hero-crianca.jpg'),
+    imageSource: require('@/assets/images/hero-crianca.jpg'),
   },
 ];
+
+function getCourseImage(courseId: number) {
+  return COURSE_IMAGE_MAP[courseId] ?? COURSE_IMAGE_MAP[1];
+}
 
 function TabButton({
   icon,
@@ -64,6 +78,22 @@ function TabButton({
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { cursos, authToken, usuario, logout } = useInscricoes();
+  const autenticado = Boolean(authToken);
+  const primeiroNome = usuario?.nome?.split(' ')[0] ?? '';
+
+  const featuredCourses = useMemo(() => {
+    if (cursos.length === 0) {
+      return FALLBACK_COURSE_ITEMS;
+    }
+
+    return cursos.slice(0, 3).map((course) => ({
+      id: String(course.id),
+      title: course.title,
+      subtitle: course.workload ? `${course.workload}h de atividades` : 'Formação gratuita',
+      imageSource: { uri: getCourseImage(course.id) } as ImageSourcePropType,
+    }));
+  }, [cursos]);
 
   return (
     <View style={styles.screen}>
@@ -82,12 +112,35 @@ export default function HomeScreen() {
               resizeMode="contain"
               style={styles.headerLogo}
             />
-            <TouchableOpacity style={styles.notificationButton} activeOpacity={0.8}>
-              <Ionicons name="notifications-outline" size={18} color="#E5F3FF" />
-            </TouchableOpacity>
+            {autenticado ? (
+              <TouchableOpacity
+                style={styles.notificationButton}
+                activeOpacity={0.8}
+                onPress={() => {
+                  Alert.alert('Sair da conta', 'Tem certeza que deseja sair?', [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                      text: 'Sair',
+                      style: 'destructive',
+                      onPress: () => logout(),
+                    },
+                  ]);
+                }}>
+                <Ionicons name="log-out-outline" size={18} color="#E5F3FF" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.notificationButton}
+                activeOpacity={0.8}
+                onPress={() => router.push('/login' as any)}>
+                <Ionicons name="log-in-outline" size={18} color="#E5F3FF" />
+              </TouchableOpacity>
+            )}
           </View>
 
-          <Text style={styles.welcomeText}>Bem-vindo(a)! 👋</Text>
+          <Text style={styles.welcomeText}>
+            {autenticado ? `Bem-vindo, ${primeiroNome}! 👋` : 'Bem-vindo(a)! 👋'}
+          </Text>
           <Text style={styles.heroHeadline}>Cada doação transforma{'\n'}uma vida! 💛</Text>
 
           <ImageBackground
@@ -139,9 +192,9 @@ export default function HomeScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.coursesList}>
-            {COURSE_ITEMS.map((item) => (
+            {featuredCourses.map((item) => (
               <TouchableOpacity
-                key={item.title}
+                key={item.id}
                 style={styles.courseCard}
                 activeOpacity={0.88}
                 onPress={() =>
@@ -150,7 +203,7 @@ export default function HomeScreen() {
                     params: { id: item.id },
                   } as any)
                 }>
-                <Image source={item.image} style={styles.courseImage} resizeMode="cover" />
+                <Image source={item.imageSource} style={styles.courseImage} resizeMode="cover" />
                 <View style={styles.courseOverlay} />
                 <View style={styles.courseTextWrap}>
                   <Text style={styles.courseTitle}>{item.title}</Text>
@@ -223,7 +276,7 @@ const styles = StyleSheet.create({
   headerLogo: {
     width: 126,
     height: 44,
-    marginLeft: -12,
+    marginLeft: -40,
   },
   notificationButton: {
     width: 40,

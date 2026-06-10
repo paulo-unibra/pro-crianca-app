@@ -1,25 +1,59 @@
 import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
-  View,
-  Text,
+  ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
+  Text,
   TextInput,
-  Platform,
-  StatusBar as RNStatusBar,
-  KeyboardAvoidingView,
-  ActivityIndicator,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { MPC } from '@/constants/theme';
 import { useInscricoes } from '@/contexts/InscricoesContext';
 
-const STATUSBAR_HEIGHT = Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 24) : 44;
-const AZUL = '#354FB8';
+const AZUL = '#1565C0';
+const AZUL_ESCURO = '#1565C0';
+const AMARELO = '#FFD600';
+const BG = '#F4F7FF';
+const TEXTO = '#1A2D5A';
+const SUBTEXTO = '#6B87B0';
+
+function Header({ onBack }: { onBack: () => void }) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={[styles.header, { paddingTop: insets.top + 10 }]}> 
+      <View style={styles.headerCircleLarge} pointerEvents="none" />
+      <View style={styles.headerCircleSmall} pointerEvents="none" />
+
+      <View style={styles.headerTopRow}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <Ionicons name="chevron-back" size={20} color="#fff" />
+        </TouchableOpacity>
+
+        <Image
+          source={require('@/assets/images/logo-branca.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
+
+        <View style={styles.backButton} />
+      </View>
+
+      <Text style={styles.headerOverline}>BEM-VINDO DE VOLTA</Text>
+      <Text style={styles.headerTitle}>Entre na sua conta</Text>
+      <Text style={styles.headerSubtitle}>
+        Acesse suas inscrições e acompanhe tudo em tempo real.
+      </Text>
+    </View>
+  );
+}
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -28,30 +62,33 @@ export default function LoginScreen() {
 
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [senhaVisivel, setSenhaVisivel] = useState(false);
-  const [carregando, setCarregando] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState('');
+  const [carregando, setCarregando] = useState(false);
 
   async function handleEntrar() {
     if (!email.trim() || !email.includes('@')) {
-      return setErro('Informe um e-mail válido.');
+      setErro('Informe um e-mail válido.');
+      return;
     }
-    if (!senha) {
-      return setErro('Informe a senha.');
+
+    if (!senha.trim()) {
+      setErro('Informe sua senha.');
+      return;
     }
 
     setErro('');
     setCarregando(true);
+
     try {
       await login(email.trim().toLowerCase(), senha);
-      // Sucesso: volta para a tela anterior (ou home se não houver histórico)
       if (router.canGoBack()) {
         router.back();
       } else {
-        router.replace('/');
+        router.replace('/' as any);
       }
     } catch (e: any) {
-      setErro(e.message ?? 'Não foi possível entrar. Verifique suas credenciais.');
+      setErro(e?.message ?? 'Não foi possível entrar. Verifique seus dados.');
     } finally {
       setCarregando(false);
     }
@@ -59,101 +96,114 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: AZUL }}
+      style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar style="light" translucent />
 
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: STATUSBAR_HEIGHT + 8 }]}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.backArrow}>←</Text>
-        </TouchableOpacity>
-        <Image
-          source={require('@/assets/images/logo-branca.png')}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
-        <View style={styles.backBtn} />
-      </View>
+      <Header
+        onBack={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/' as any);
+          }
+        }}
+      />
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
+        contentContainerStyle={{ paddingBottom: insets.bottom + 26 }}>
+        <View style={styles.formWrap}>
+          <View style={styles.formCard}>
+            <View style={styles.formTitleRow}>
+              <View style={styles.formTitleIconWrap}>
+                <Ionicons name="log-in-outline" size={17} color={AZUL} />
+              </View>
+              <View style={{ flex: 1, marginTop: 10 }}>
+                <Text style={styles.formTitle}>Entrar</Text>
+                <Text style={styles.formSubtitle}>Use seu e-mail e senha para continuar.</Text>
+              </View>
+            </View>
 
-        {/* Hero */}
-        <View style={styles.hero}>
-          <Text style={styles.heroOverline}>BEM-VINDO DE VOLTA</Text>
-          <Text style={styles.heroTitulo}>Entre na{'\n'}sua conta</Text>
-          <Text style={styles.heroSubtitulo}>
-            Acesse seu histórico de inscrições e acompanhe o status das suas pré-inscrições.
-          </Text>
-        </View>
+            <Text style={styles.inputLabel}>E-mail</Text>
+            <View style={styles.inputWrap}>
+              <Ionicons name="mail-outline" size={17} color="#9BACC8" />
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={(v) => {
+                  setEmail(v);
+                  if (erro) setErro('');
+                }}
+                placeholder="seu@email.com"
+                placeholderTextColor="#9BACC8"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+              />
+            </View>
 
-        {/* Formulário */}
-        <View style={styles.form}>
-          <Text style={styles.inputLabel}>E-mail</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={(v) => { setEmail(v); setErro(''); }}
-            placeholder="seu@email.com"
-            placeholderTextColor="rgba(255,255,255,0.35)"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="next"
-          />
+            <Text style={[styles.inputLabel, { marginTop: 14 }]}>Senha</Text>
+            <View style={styles.inputWrap}>
+              <Ionicons name="lock-closed-outline" size={17} color="#9BACC8" />
+              <TextInput
+                style={styles.input}
+                value={senha}
+                onChangeText={(v) => {
+                  setSenha(v);
+                  if (erro) setErro('');
+                }}
+                placeholder="Sua senha"
+                placeholderTextColor="#9BACC8"
+                secureTextEntry={!mostrarSenha}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={handleEntrar}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setMostrarSenha((old) => !old)}>
+                <Ionicons
+                  name={mostrarSenha ? 'eye-off-outline' : 'eye-outline'}
+                  size={18}
+                  color="#6B87B0"
+                />
+              </TouchableOpacity>
+            </View>
 
-          <Text style={[styles.inputLabel, { marginTop: 16 }]}>Senha</Text>
-          <View style={styles.senhaWrap}>
-            <TextInput
-              style={[styles.input, styles.inputSenha]}
-              value={senha}
-              onChangeText={(v) => { setSenha(v); setErro(''); }}
-              placeholder="Sua senha"
-              placeholderTextColor="rgba(255,255,255,0.35)"
-              secureTextEntry={!senhaVisivel}
-              returnKeyType="done"
-              onSubmitEditing={handleEntrar}
-            />
-            <TouchableOpacity
-              style={styles.senhaToggle}
-              onPress={() => setSenhaVisivel((v) => !v)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.senhaToggleText}>{senhaVisivel ? '🙈' : '👁️'}</Text>
-            </TouchableOpacity>
+            {erro ? (
+              <View style={styles.errorRow}>
+                <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                <Text style={styles.errorText}>{erro}</Text>
+              </View>
+            ) : null}
           </View>
 
-          {erro ? <Text style={styles.erroText}>{erro}</Text> : null}
-
           <TouchableOpacity
-            style={[styles.btnEntrar, carregando && { opacity: 0.7 }]}
+            style={[styles.primaryButton, carregando && { opacity: 0.7 }]}
             onPress={handleEntrar}
-            disabled={carregando}
-            activeOpacity={0.8}>
+            disabled={carregando}>
             {carregando ? (
               <ActivityIndicator color={AZUL} />
             ) : (
-              <Text style={styles.btnEntrarText}>ENTRAR</Text>
+              <>
+                <Text style={styles.primaryButtonText}>Entrar</Text>
+                <Ionicons name="arrow-forward" size={17} color={AZUL} />
+              </>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.btnCadastro}
-            onPress={() => router.push('/cadastro' as any)}
-            activeOpacity={0.8}>
-            <Text style={styles.btnCadastroText}>CRIAR CONTA</Text>
+            style={styles.secondaryButton}
+            onPress={() => router.push('/cadastro' as any)}>
+            <Text style={styles.secondaryButtonText}>Criar conta</Text>
           </TouchableOpacity>
-        </View>
 
-        {/* Rodapé informativo */}
-        <View style={styles.rodape}>
-          <Text style={styles.rodapeTexto}>
-            Ao criar uma conta, você poderá acompanhar o status das suas pré-inscrições a qualquer momento.
+          <Text style={styles.footnote}>
+            Ao entrar, você pode acompanhar o status das suas pré-inscrições.
           </Text>
         </View>
       </ScrollView>
@@ -162,138 +212,204 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+
   header: {
+    backgroundColor: AZUL,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    paddingHorizontal: 18,
+    paddingBottom: 22,
+    overflow: 'hidden',
+  },
+  headerCircleLarge: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(111, 196, 255, 0.16)',
+    right: -45,
+    top: -25,
+  },
+  headerCircleSmall: {
+    position: 'absolute',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: 'rgba(255, 214, 0, 0.18)',
+    right: 14,
+    top: 18,
+  },
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    marginBottom: 16,
   },
-  backBtn: {
+  backButton: {
     width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  backArrow: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '300',
   },
   logoImage: {
-    width: 110,
-    height: 60,
+    width: 112,
+    height: 42,
+    marginLeft: -8,
   },
-
-  scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
-  },
-
-  hero: {
-    paddingVertical: 28,
-    gap: 8,
-  },
-  heroOverline: {
-    color: 'rgba(255,255,255,0.55)',
+  headerOverline: {
+    color: 'rgba(255,255,255,0.72)',
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
+    marginBottom: 4,
   },
-  heroTitulo: {
+  headerTitle: {
     color: '#fff',
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: '900',
-    lineHeight: 42,
-  },
-  heroSubtitulo: {
-    color: 'rgba(255,255,255,0.65)',
-    fontSize: 14,
-    lineHeight: 20,
-    maxWidth: '85%',
-  },
-
-  form: {
-    gap: 0,
-  },
-  inputLabel: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    lineHeight: 35,
     marginBottom: 6,
   },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 12,
+  headerSubtitle: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 13,
+    lineHeight: 19,
+    maxWidth: '92%',
+  },
+
+  formWrap: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: '#fff',
+    marginTop: -12,
+  },
+  formCard: {
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: '#EAF0FA',
+    shadowColor: AZUL,
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
-  senhaWrap: {
-    position: 'relative',
+  formTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
   },
-  inputSenha: {
-    paddingRight: 52,
-  },
-  senhaToggle: {
-    position: 'absolute',
-    right: 14,
-    top: 0,
-    bottom: 0,
+  formTitleIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: AMARELO,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  senhaToggleText: {
-    fontSize: 18,
+  formTitle: {
+    color: AZUL_ESCURO,
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  formSubtitle: {
+    marginTop: 3,
+    color: SUBTEXTO,
+    fontSize: 12,
+    lineHeight: 17,
   },
 
-  erroText: {
-    color: '#ff8a80',
+  inputLabel: {
+    color: TEXTO,
     fontSize: 13,
     fontWeight: '600',
-    marginTop: 10,
+    marginBottom: 6,
   },
-
-  btnEntrar: {
-    backgroundColor: '#fff',
-    borderRadius: 30,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 28,
-  },
-  btnEntrarText: {
-    color: AZUL,
-    fontWeight: '900',
-    fontSize: 15,
-    letterSpacing: 1,
-  },
-
-  btnCadastro: {
-    borderRadius: 30,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 12,
+  inputWrap: {
+    minHeight: 54,
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
+    borderColor: '#E8EEF9',
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#fff',
   },
-  btnCadastroText: {
-    color: '#fff',
-    fontWeight: '900',
-    fontSize: 15,
-    letterSpacing: 1,
+  input: {
+    flex: 1,
+    fontSize: 14,
+    color: TEXTO,
+    paddingVertical: 0,
+  },
+  eyeButton: {
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '500',
   },
 
-  rodape: {
-    marginTop: 28,
+  primaryButton: {
+    marginTop: 14,
+    backgroundColor: AMARELO,
+    borderRadius: 18,
+    minHeight: 54,
     alignItems: 'center',
-    paddingHorizontal: 8,
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    shadowColor: AMARELO,
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
-  rodapeTexto: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 12,
-    lineHeight: 18,
+  primaryButtonText: {
+    color: AZUL,
+    fontSize: 15,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  secondaryButton: {
+    marginTop: 10,
+    borderRadius: 18,
+    minHeight: 52,
+    borderWidth: 1.5,
+    borderColor: '#D6E2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  secondaryButtonText: {
+    color: AZUL,
+    fontSize: 14,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  footnote: {
+    marginTop: 12,
     textAlign: 'center',
+    color: '#8CA6CC',
+    fontSize: 11,
+    lineHeight: 16,
+    paddingHorizontal: 6,
   },
 });

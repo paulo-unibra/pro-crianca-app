@@ -1,28 +1,42 @@
 import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
-  View,
-  Text,
+  ActivityIndicator,
+  Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
-  StatusBar as RNStatusBar,
-  Platform,
-  Alert,
-  ActivityIndicator,
+  Text,
   TextInput,
-  KeyboardAvoidingView,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { MPC } from '@/constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useInscricoes } from '@/contexts/InscricoesContext';
 
-const STATUSBAR_HEIGHT = Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 24) : 44;
-const AZUL = '#354FB8';
+const AZUL = '#1565C0';
+const AMARELO = '#FFD600';
+const BG = '#F4F7FF';
+const TEXTO = '#1A2D5A';
+const SUBTEXTO = '#6B87B0';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const STATUS_LABEL: Record<string, string> = {
+  pendente: 'Pendente',
+  confirmada: 'Confirmada',
+  concluida: 'Concluída',
+  cancelada: 'Cancelada',
+};
+
+const STATUS_COLOR: Record<string, string> = {
+  pendente: '#F7941D',
+  confirmada: '#22C55E',
+  concluida: '#1565C0',
+  cancelada: '#EF4444',
+};
 
 function formatCpf(cpf: string): string {
   const d = cpf.replace(/\D/g, '');
@@ -48,86 +62,77 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR');
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  pendente: 'Pendente',
-  confirmada: 'Confirmada',
-  cancelada: 'Cancelada',
-};
+function Header({ onBack }: { onBack: () => void }) {
+  const insets = useSafeAreaInsets();
 
-const STATUS_COLOR: Record<string, string> = {
-  pendente: '#F7941D',
-  confirmada: '#4CAF50',
-  cancelada: '#e53935',
-};
-
-// ─── Componente auxiliar ──────────────────────────────────────────────────────
-
-function InfoRow({
-  label,
-  value,
-  icon,
-  destaque,
-}: {
-  label: string;
-  value: string;
-  icon: string;
-  destaque?: boolean;
-}) {
   return (
-    <View style={infoStyles.row}>
-      <Text style={infoStyles.icon}>{icon}</Text>
-      <View style={{ flex: 1 }}>
-        <Text style={infoStyles.label}>{label}</Text>
-        <Text style={[infoStyles.value, destaque && infoStyles.valueDestaque]}>{value}</Text>
+    <View style={[styles.header, { paddingTop: insets.top + 10 }]}> 
+      <View style={styles.headerCircleLarge} pointerEvents="none" />
+      <View style={styles.headerCircleSmall} pointerEvents="none" />
+
+      <View style={styles.headerTopRow}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <Ionicons name="chevron-back" size={20} color="#fff" />
+        </TouchableOpacity>
+
+        <Image
+          source={require('@/assets/images/logo-branca.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
+
+        <View style={styles.backButton} />
       </View>
+
+      <Text style={styles.headerOverline}>MINHA CONTA</Text>
+      <Text style={styles.headerTitle}>Perfil</Text>
+      <Text style={styles.headerSubtitle}>Seus dados, inscrições e configurações de conta.</Text>
     </View>
   );
 }
 
-const infoStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
-  },
-  icon: { fontSize: 20 },
-  label: {
-    color: 'rgba(255,255,255,0.55)',
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  value: {
-    color: MPC.branco,
-    fontSize: 15,
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  valueDestaque: {
-    color: '#F7941D',
-    fontSize: 13,
-    fontStyle: 'italic',
-  },
-});
-
-// ─── Tela ─────────────────────────────────────────────────────────────────────
+function InfoRow({
+  icon,
+  label,
+  value,
+  muted,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+  muted?: boolean;
+}) {
+  return (
+    <View style={styles.infoRow}>
+      <View style={styles.infoIconWrap}>
+        <Ionicons name={icon} size={14} color={AZUL} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <Text style={[styles.infoValue, muted && styles.infoValueMuted]}>{value}</Text>
+      </View>
+    </View>
+  );
+}
 
 export default function PerfilScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { inscricoes, authToken, usuario, cancelarInscricao, logout, atualizarPerfil } =
     useInscricoes();
+
   const [cancelando, setCancelando] = useState<string | null>(null);
 
-  // ── Estado do formulário de edição ───────────────────────────────────────────
   const [editando, setEditando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erroEdicao, setErroEdicao] = useState('');
   const [form, setForm] = useState({ nome: '', cpf: '', telefone: '' });
+
+  const autenticado = Boolean(authToken);
+  const nomeUsuario = usuario?.nome ?? null;
+  const cpfUsuario = usuario?.cpf ?? null;
+  const telefoneUsuario = usuario?.telefone ?? null;
+  const emailUsuario = usuario?.email ?? null;
 
   function abrirEdicao() {
     setForm({
@@ -140,12 +145,20 @@ export default function PerfilScreen() {
   }
 
   async function salvarEdicao() {
-    if (!form.nome.trim()) return setErroEdicao('Informe o nome completo.');
+    if (!form.nome.trim()) {
+      setErroEdicao('Informe o nome completo.');
+      return;
+    }
+
     const cpfLimpo = form.cpf.replace(/\D/g, '');
-    if (cpfLimpo.length > 0 && cpfLimpo.length !== 11) return setErroEdicao('CPF inválido.');
+    if (cpfLimpo.length > 0 && cpfLimpo.length !== 11) {
+      setErroEdicao('CPF inválido.');
+      return;
+    }
 
     setSalvando(true);
     setErroEdicao('');
+
     try {
       await atualizarPerfil({
         nome: form.nome.trim(),
@@ -161,8 +174,6 @@ export default function PerfilScreen() {
     }
   }
 
-  // ── Logout ───────────────────────────────────────────────────────────────────
-
   async function handleLogout() {
     Alert.alert('Sair da conta', 'Tem certeza que deseja sair?', [
       { text: 'Cancelar', style: 'cancel' },
@@ -171,7 +182,7 @@ export default function PerfilScreen() {
         style: 'destructive',
         onPress: async () => {
           await logout();
-          router.replace('/');
+          router.replace('/' as any);
         },
       },
     ]);
@@ -197,99 +208,79 @@ export default function PerfilScreen() {
             }
           },
         },
-      ]
+      ],
     );
   }
 
-  const nomeUsuario = usuario?.nome ?? null;
-  const cpfUsuario = usuario?.cpf ?? null;
-  const telefoneUsuario = usuario?.telefone ?? null;
-  const emailUsuario = usuario?.email ?? null;
-  const autenticado = !!authToken;
-
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View style={{ flex: 1, backgroundColor: MPC.azulEscuro }}>
-        <StatusBar style="light" translucent />
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <StatusBar style="light" translucent />
 
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Text style={styles.backBtnText}>← Voltar</Text>
-          </TouchableOpacity>
-          <Image
-            source={require('@/assets/images/logo-branca.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-        </View>
+      <Header
+        onBack={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/' as any);
+          }
+        }}
+      />
 
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Avatar + título */}
-          <View style={styles.avatarSection}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarIcon}>👤</Text>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 26 }}>
+        <View style={styles.contentWrap}>
+          <View style={styles.profileCard}>
+            <View style={styles.avatarWrap}>
+              <Ionicons name="person" size={30} color={AZUL} />
             </View>
-            <Text style={styles.nomeUsuario}>
-              {nomeUsuario ?? (autenticado ? 'Carregando…' : 'Visitante')}
+            <Text style={styles.userName}>
+              {nomeUsuario ?? (autenticado ? 'Carregando...' : 'Visitante')}
             </Text>
-            <Text style={styles.tagUsuario}>
+            <Text style={styles.userTag}>
               {autenticado ? 'Conta vinculada' : 'Sem conta vinculada'}
             </Text>
           </View>
 
-          {/* Card de dados pessoais */}
-          {autenticado && (
+          {autenticado ? (
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <Text style={styles.cardTitulo}>Dados pessoais</Text>
-                {!editando && (
-                  <TouchableOpacity
-                    style={styles.btnEditar}
-                    onPress={abrirEdicao}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={styles.btnEditarText}>✏️ Editar</Text>
+                <Text style={styles.cardTitle}>Dados pessoais</Text>
+
+                {!editando ? (
+                  <TouchableOpacity style={styles.editButton} onPress={abrirEdicao}>
+                    <Ionicons name="create-outline" size={13} color={AZUL} />
+                    <Text style={styles.editButtonText}>Editar</Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
               </View>
 
               {editando ? (
-                /* ── Formulário de edição ── */
-                <View style={styles.formEdicao}>
+                <View style={{ gap: 8 }}>
                   <Text style={styles.inputLabel}>Nome completo *</Text>
                   <TextInput
                     style={styles.input}
                     value={form.nome}
-                    onChangeText={(v) => setForm({ ...form, nome: v })}
+                    onChangeText={(v) => setForm((old) => ({ ...old, nome: v }))}
                     placeholder="Seu nome completo"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    placeholderTextColor="#9BACC8"
                     autoCapitalize="words"
                   />
 
                   <Text style={styles.inputLabel}>E-mail</Text>
-                  <TextInput
-                    style={[styles.input, styles.inputDisabled]}
-                    value={emailUsuario ?? ''}
-                    editable={false}
-                  />
+                  <TextInput style={[styles.input, styles.inputDisabled]} value={emailUsuario ?? ''} editable={false} />
                   <Text style={styles.inputHint}>O e-mail não pode ser alterado.</Text>
 
                   <Text style={styles.inputLabel}>CPF</Text>
                   <TextInput
                     style={styles.input}
                     value={form.cpf}
-                    onChangeText={(v) => setForm({ ...form, cpf: formatCpfInput(v) })}
+                    onChangeText={(v) => setForm((old) => ({ ...old, cpf: formatCpfInput(v) }))}
                     placeholder="000.000.000-00"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    placeholderTextColor="#9BACC8"
                     keyboardType="numeric"
                   />
 
@@ -297,358 +288,581 @@ export default function PerfilScreen() {
                   <TextInput
                     style={styles.input}
                     value={form.telefone}
-                    onChangeText={(v) => setForm({ ...form, telefone: formatTelefoneInput(v) })}
+                    onChangeText={(v) =>
+                      setForm((old) => ({ ...old, telefone: formatTelefoneInput(v) }))
+                    }
                     placeholder="(81) 99999-9999"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    placeholderTextColor="#9BACC8"
                     keyboardType="phone-pad"
                   />
 
-                  {erroEdicao ? <Text style={styles.erroText}>{erroEdicao}</Text> : null}
+                  {erroEdicao ? (
+                    <View style={styles.errorRow}>
+                      <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                      <Text style={styles.errorText}>{erroEdicao}</Text>
+                    </View>
+                  ) : null}
 
-                  <View style={styles.botoesEdicao}>
+                  <View style={styles.editButtonsRow}>
                     <TouchableOpacity
-                      style={styles.btnCancelarEdicao}
+                      style={styles.cancelEditButton}
                       onPress={() => setEditando(false)}
-                      disabled={salvando}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={styles.btnCancelarEdicaoText}>Cancelar</Text>
+                      disabled={salvando}>
+                      <Text style={styles.cancelEditButtonText}>Cancelar</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.btnSalvar}
+                      style={styles.saveButton}
                       onPress={salvarEdicao}
-                      disabled={salvando}
-                      activeOpacity={0.75}
-                    >
+                      disabled={salvando}>
                       {salvando ? (
                         <ActivityIndicator size="small" color="#fff" />
                       ) : (
-                        <Text style={styles.btnSalvarText}>Salvar</Text>
+                        <Text style={styles.saveButtonText}>Salvar</Text>
                       )}
                     </TouchableOpacity>
                   </View>
                 </View>
               ) : (
-                /* ── Visualização ── */
                 <View>
-                  {emailUsuario ? (
-                    <InfoRow label="E-mail" value={emailUsuario} icon="✉️" />
-                  ) : null}
+                  {emailUsuario ? <InfoRow icon="mail-outline" label="E-mail" value={emailUsuario} /> : null}
+
                   {cpfUsuario ? (
-                    <InfoRow label="CPF" value={formatCpf(cpfUsuario)} icon="🪪" />
+                    <InfoRow icon="card-outline" label="CPF" value={formatCpf(cpfUsuario)} />
                   ) : (
                     <InfoRow
+                      icon="card-outline"
                       label="CPF"
-                      value="Não cadastrado — necessário para doações"
-                      icon="🪪"
-                      destaque
+                      value="Não cadastrado - necessário para doações"
+                      muted
                     />
                   )}
+
                   {telefoneUsuario ? (
                     <InfoRow
+                      icon="call-outline"
                       label="Telefone"
                       value={formatTelefoneInput(telefoneUsuario)}
-                      icon="📱"
                     />
                   ) : (
-                    <InfoRow label="Telefone" value="Não cadastrado" icon="📱" destaque />
+                    <InfoRow
+                      icon="call-outline"
+                      label="Telefone"
+                      value="Não cadastrado"
+                      muted
+                    />
                   )}
                 </View>
               )}
             </View>
+          ) : (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Acesse sua conta</Text>
+              <Text style={styles.notAuthText}>
+                Entre para acompanhar seu histórico e gerenciar inscrições.
+              </Text>
+
+              <TouchableOpacity style={styles.primaryButton} onPress={() => router.push('/login' as any)}>
+                <Text style={styles.primaryButtonText}>Entrar na minha conta</Text>
+                <Ionicons name="arrow-forward" size={16} color={AZUL} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => router.push('/cadastro' as any)}>
+                <Text style={styles.secondaryButtonText}>Criar conta</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
-          {/* Card de inscrições */}
           <View style={styles.card}>
-            <Text style={styles.cardTitulo}>
+            <Text style={styles.cardTitle}>
               Minhas inscrições{inscricoes.length > 0 ? ` (${inscricoes.length})` : ''}
             </Text>
 
             {inscricoes.length === 0 ? (
-              <View style={styles.vazio}>
-                <Text style={styles.vazioIcon}>📋</Text>
-                <Text style={styles.vazioTexto}>
+              <View style={styles.emptyWrap}>
+                <Text style={styles.emptyIcon}>📋</Text>
+                <Text style={styles.emptyText}>
                   {autenticado
                     ? 'Você ainda não tem inscrições.'
                     : 'Faça uma inscrição para ver seu histórico aqui.'}
                 </Text>
                 <TouchableOpacity
-                  style={styles.btnSecundario}
-                  onPress={() => router.push('/cursos' as any)}
-                >
-                  <Text style={styles.btnSecundarioText}>VER CURSOS DISPONÍVEIS</Text>
+                  style={styles.outlineButton}
+                  onPress={() => router.push('/cursos' as any)}>
+                  <Text style={styles.outlineButtonText}>Ver cursos disponíveis</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               inscricoes.map((insc) => (
-                <View key={insc.id} style={styles.inscricaoCard}>
-                  <View style={styles.inscricaoHeader}>
-                    <Text style={styles.inscricaoProtocolo}>{insc.protocolo}</Text>
+                <View key={insc.id} style={styles.enrollmentCard}>
+                  <View style={styles.enrollmentHeader}>
+                    <Text style={styles.enrollmentProtocol}>{insc.protocolo}</Text>
                     <View
                       style={[
                         styles.statusBadge,
-                        { backgroundColor: STATUS_COLOR[insc.status] + '22' },
-                      ]}
-                    >
+                        {
+                          backgroundColor: `${STATUS_COLOR[insc.status]}22`,
+                          borderColor: `${STATUS_COLOR[insc.status]}66`,
+                        },
+                      ]}>
                       <Text style={[styles.statusText, { color: STATUS_COLOR[insc.status] }]}>
                         {STATUS_LABEL[insc.status]}
                       </Text>
                     </View>
                   </View>
 
-                  <Text style={styles.inscricaoCurso}>{insc.curso.title}</Text>
-                  <Text style={styles.inscricaoDetalhe}>📍 {insc.unidade.name}</Text>
+                  <Text style={styles.enrollmentCourse}>{insc.curso.title}</Text>
+                  <Text style={styles.enrollmentDetail}>📍 {insc.unidade.name}</Text>
                   {insc.turno.start_time && insc.turno.end_time ? (
-                    <Text style={styles.inscricaoDetalhe}>
-                      🕐 {insc.turno.start_time} – {insc.turno.end_time}
+                    <Text style={styles.enrollmentDetail}>
+                      🕒 {insc.turno.start_time} - {insc.turno.end_time}
                     </Text>
                   ) : null}
-                  <Text style={styles.inscricaoData}>
-                    Inscrito em {formatDate(insc.dataInscricao)}
-                  </Text>
+                  <Text style={styles.enrollmentDate}>Inscrito em {formatDate(insc.dataInscricao)}</Text>
 
-                  {insc.status === 'pendente' && (
+                  {insc.status === 'pendente' ? (
                     <TouchableOpacity
-                      style={styles.btnCancelar}
+                      style={styles.cancelButton}
                       onPress={() => handleCancelar(insc.id, insc.curso.title)}
-                      disabled={cancelando === insc.id}
-                      activeOpacity={0.75}
-                    >
+                      disabled={cancelando === insc.id}>
                       {cancelando === insc.id ? (
-                        <ActivityIndicator size="small" color="#e53935" />
+                        <ActivityIndicator size="small" color="#EF4444" />
                       ) : (
-                        <Text style={styles.btnCancelarText}>Cancelar pré-inscrição</Text>
+                        <Text style={styles.cancelButtonText}>Cancelar pré-inscrição</Text>
                       )}
                     </TouchableOpacity>
-                  )}
+                  ) : null}
                 </View>
               ))
             )}
           </View>
 
-          {/* Sem conta */}
-          {!autenticado && (
-            <>
-              <TouchableOpacity
-                style={styles.btnEntrar}
-                onPress={() => router.push('/login' as any)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.btnEntrarText}>ENTRAR NA MINHA CONTA</Text>
-              </TouchableOpacity>
-              <View style={styles.avisoCard}>
-                <Text style={styles.avisoTexto}>
-                  💡 Ao fazer uma inscrição, sua conta é criada automaticamente com o CPF
-                  informado. Assim você poderá acompanhar seu histórico aqui.
-                </Text>
-              </View>
-            </>
-          )}
-
-          {/* Logout */}
-          {autenticado && (
-            <TouchableOpacity
-              style={styles.btnLogout}
-              onPress={handleLogout}
-              activeOpacity={0.75}
-            >
-              <Text style={styles.btnLogoutText}>SAIR DA CONTA</Text>
+          {autenticado ? (
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Text style={styles.logoutButtonText}>Sair da conta</Text>
             </TouchableOpacity>
-          )}
-        </ScrollView>
-      </View>
+          ) : null}
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-// ─── Estilos ──────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+
   header: {
-    paddingTop: STATUSBAR_HEIGHT + 8,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    backgroundColor: AZUL,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    paddingHorizontal: 18,
+    paddingBottom: 22,
+    overflow: 'hidden',
+  },
+  headerCircleLarge: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(111, 196, 255, 0.16)',
+    right: -45,
+    top: -25,
+  },
+  headerCircleSmall: {
+    position: 'absolute',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: 'rgba(255, 214, 0, 0.18)',
+    right: 14,
+    top: 18,
+  },
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 16,
   },
-  logoImage: { width: 130, height: 75 },
-  backBtn: { paddingVertical: 4, paddingRight: 12 },
-  backBtnText: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '600' },
-
-  scroll: { paddingHorizontal: 20, paddingTop: 8, gap: 16 },
-
-  avatarSection: { alignItems: 'center', paddingVertical: 24, gap: 8 },
-  avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  logoImage: {
+    width: 112,
+    height: 42,
+    marginLeft: -8,
+  },
+  headerOverline: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
     marginBottom: 4,
   },
-  avatarIcon: { fontSize: 40 },
-  nomeUsuario: { color: MPC.branco, fontSize: 22, fontWeight: '800', textAlign: 'center' },
-  tagUsuario: { color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: '500' },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 30,
+    fontWeight: '900',
+    lineHeight: 35,
+    marginBottom: 6,
+  },
+  headerSubtitle: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 13,
+    lineHeight: 19,
+    maxWidth: '92%',
+  },
+
+  contentWrap: {
+    paddingHorizontal: 16,
+    marginTop: -12,
+    gap: 12,
+  },
+
+  profileCard: {
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#EAF0FA',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    alignItems: 'center',
+    shadowColor: AZUL,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  avatarWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 2,
+    borderColor: '#D6E6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  userName: {
+    color: TEXTO,
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  userTag: {
+    marginTop: 3,
+    color: SUBTEXTO,
+    fontSize: 12,
+    fontWeight: '500',
+  },
 
   card: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 16,
-    padding: 18,
+    borderRadius: 20,
+    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    marginBottom: 4,
+    borderColor: '#EAF0FA',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    shadowColor: AZUL,
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  cardTitulo: { color: MPC.branco, fontSize: 16, fontWeight: '800' },
+  cardTitle: {
+    color: TEXTO,
+    fontSize: 16,
+    fontWeight: '800',
+  },
 
-  btnEditar: {
-    paddingHorizontal: 12,
+  editButton: {
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#D6E2F7',
+    backgroundColor: '#fff',
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  btnEditarText: { color: MPC.branco, fontSize: 12, fontWeight: '700' },
-
-  formEdicao: { gap: 2 },
-  inputLabel: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: MPC.branco,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  inputDisabled: { opacity: 0.4 },
-  inputHint: { color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 2 },
-  erroText: { color: '#F87171', fontSize: 13, fontWeight: '600', marginTop: 8 },
-  botoesEdicao: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  btnCancelarEdicao: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 30,
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  btnCancelarEdicaoText: { color: 'rgba(255,255,255,0.7)', fontWeight: '700', fontSize: 13 },
-  btnSalvar: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 30,
-    alignItems: 'center',
-    backgroundColor: AZUL,
-  },
-  btnSalvarText: { color: '#fff', fontWeight: '800', fontSize: 13, letterSpacing: 0.5 },
-
-  vazio: { alignItems: 'center', paddingVertical: 20, gap: 10 },
-  vazioIcon: { fontSize: 36 },
-  vazioTexto: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  btnSecundario: {
-    marginTop: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  btnSecundarioText: { color: MPC.branco, fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
-
-  inscricaoCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
     gap: 4,
   },
-  inscricaoHeader: {
+  editButtonText: {
+    color: AZUL,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  infoRow: {
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ECF1FA',
+    backgroundColor: '#FAFCFF',
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    backgroundColor: '#EAF3FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoLabel: {
+    color: '#8CA6CC',
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 1,
+  },
+  infoValue: {
+    color: TEXTO,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  infoValueMuted: {
+    color: '#A0B4D4',
+    fontStyle: 'italic',
+  },
+
+  inputLabel: {
+    color: TEXTO,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 8,
+    marginBottom: 3,
+  },
+  input: {
+    minHeight: 48,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E8EEF9',
+    backgroundColor: '#fff',
+    paddingHorizontal: 14,
+    fontSize: 14,
+    color: TEXTO,
+  },
+  inputDisabled: {
+    backgroundColor: '#F2F6FD',
+    color: '#8CA6CC',
+  },
+  inputHint: {
+    marginTop: 3,
+    color: '#8CA6CC',
+    fontSize: 11,
+  },
+
+  errorRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
+  editButtonsRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  cancelEditButton: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#D6E2F7',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelEditButtonText: {
+    color: SUBTEXTO,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  saveButton: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 14,
+    backgroundColor: AZUL,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
+  notAuthText: {
+    marginTop: 4,
+    color: SUBTEXTO,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  primaryButton: {
+    marginTop: 12,
+    minHeight: 50,
+    borderRadius: 16,
+    backgroundColor: AMARELO,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  primaryButtonText: {
+    color: AZUL,
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  secondaryButton: {
+    marginTop: 8,
+    minHeight: 46,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#D6E2F7',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButtonText: {
+    color: AZUL,
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  emptyIcon: {
+    fontSize: 36,
+    marginBottom: 6,
+  },
+  emptyText: {
+    color: SUBTEXTO,
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  outlineButton: {
+    marginTop: 10,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#D6E2F7',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  outlineButtonText: {
+    color: AZUL,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+
+  enrollmentCard: {
+    marginTop: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#ECF1FA',
+    backgroundColor: '#FAFCFF',
+    padding: 12,
+  },
+  enrollmentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 4,
   },
-  inscricaoProtocolo: {
-    color: 'rgba(255,255,255,0.5)',
+  enrollmentProtocol: {
+    color: '#8CA6CC',
     fontSize: 11,
     fontWeight: '600',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  statusText: { fontSize: 11, fontWeight: '700' },
-  inscricaoCurso: { color: MPC.branco, fontSize: 15, fontWeight: '800', marginBottom: 2 },
-  inscricaoDetalhe: { color: 'rgba(255,255,255,0.65)', fontSize: 13 },
-  inscricaoData: { color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 4 },
-  btnCancelar: {
+  statusBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  enrollmentCourse: {
+    color: TEXTO,
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  enrollmentDetail: {
+    color: SUBTEXTO,
+    fontSize: 12,
+    marginTop: 1,
+  },
+  enrollmentDate: {
+    color: '#8CA6CC',
+    fontSize: 11,
+    marginTop: 6,
+  },
+  cancelButton: {
     marginTop: 10,
     alignSelf: 'flex-start',
-    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#F4B5B5',
+    backgroundColor: '#FFF4F4',
+    paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 20,
+    minWidth: 44,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  logoutButton: {
+    marginTop: 2,
+    borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: 'rgba(229,57,53,0.6)',
-    backgroundColor: 'rgba(229,57,53,0.08)',
-    minWidth: 48,
+    borderColor: '#F4B5B5',
+    backgroundColor: '#FFF4F4',
+    minHeight: 48,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  btnCancelarText: { color: '#ff6b6b', fontSize: 12, fontWeight: '700' },
-
-  avisoCard: {
-    backgroundColor: 'rgba(0,170,255,0.12)',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(0,170,255,0.25)',
-    marginBottom: 4,
+  logoutButtonText: {
+    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
-  avisoTexto: { color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 19 },
-
-  btnLogout: {
-    borderRadius: 30,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(229,57,53,0.5)',
-    backgroundColor: 'rgba(229,57,53,0.08)',
-    marginTop: 4,
-    marginBottom: 8,
-  },
-  btnLogoutText: { color: '#ff6b6b', fontSize: 13, fontWeight: '800', letterSpacing: 0.8 },
-
-  btnEntrar: {
-    backgroundColor: '#fff',
-    borderRadius: 30,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 4,
-    marginBottom: 12,
-  },
-  btnEntrarText: { color: MPC.azulEscuro, fontWeight: '900', fontSize: 14, letterSpacing: 0.8 },
 });
