@@ -29,6 +29,8 @@ const TEXTO = '#1A2D5A';
 const SUBTEXTO = '#6B87B0';
 
 const FALLBACK_COURSE_IMAGE = 'https://images.unsplash.com/photo-1759143103113-6696d40598bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900';
+
+const TAG_COLORS = [
   { bg: '#EFF6FF', text: '#3B82F6' },
   { bg: '#FDF2F8', text: '#EC4899' },
   { bg: '#ECFDF5', text: '#10B981' },
