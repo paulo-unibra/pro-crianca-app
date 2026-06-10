@@ -53,13 +53,7 @@ const BG = '#F4F7FF';
 const TEXTO = '#1A2D5A';
 const SUBTEXTO = '#6B87B0';
 
-const COURSE_IMAGE_MAP: Record<number, string> = {
-  1: 'https://images.unsplash.com/photo-1759143103113-6696d40598bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
-  2: 'https://images.unsplash.com/photo-1703301287688-c9a306ebed99?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
-  3: 'https://images.unsplash.com/photo-1762475833776-fd57865db4d5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
-  4: 'https://images.unsplash.com/photo-1758874961449-37e171a41223?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
-  5: 'https://images.unsplash.com/photo-1767902012345-bd31f0ba76d7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
-};
+const FALLBACK_COURSE_IMAGE = 'https://images.unsplash.com/photo-1759143103113-6696d40598bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900';
 
 const UNIT_BADGE_COLORS = [
   { bg: '#EFF6FF', text: '#3B82F6' },
@@ -76,8 +70,8 @@ function pickParam(value: string | string[] | undefined) {
   return value;
 }
 
-function getCourseImage(courseId: number) {
-  return COURSE_IMAGE_MAP[courseId] ?? COURSE_IMAGE_MAP[1];
+function getCourseImage(course: { image?: string | null }) {
+  return course.image || FALLBACK_COURSE_IMAGE;
 }
 
 function getUnitBadgeColor(unitName?: string) {
@@ -268,7 +262,7 @@ function CatalogoCursos({ onOpenCourse }: { onOpenCourse: (curso: Curso) => void
                 onPress={() => onOpenCourse(course)}>
                 <View style={styles.catalogImageWrap}>
                   <Image
-                    source={{ uri: getCourseImage(course.id) }}
+                    source={{ uri: getCourseImage(course) }}
                     style={styles.catalogImage}
                     resizeMode="cover"
                   />

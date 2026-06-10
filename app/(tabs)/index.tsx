@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import type { ImageSourcePropType } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
@@ -16,44 +15,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useInscricoes } from '@/contexts/InscricoesContext';
 
-type CourseItem = {
-  id: string;
-  title: string;
-  subtitle: string;
-  imageSource: ImageSourcePropType;
-};
+const FALLBACK_COURSE_IMAGE = 'https://images.unsplash.com/photo-1759143103113-6696d40598bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900';
 
-const COURSE_IMAGE_MAP: Record<number, string> = {
-  1: 'https://images.unsplash.com/photo-1759143103113-6696d40598bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
-  2: 'https://images.unsplash.com/photo-1703301287688-c9a306ebed99?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
-  3: 'https://images.unsplash.com/photo-1762475833776-fd57865db4d5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
-  4: 'https://images.unsplash.com/photo-1758874961449-37e171a41223?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
-  5: 'https://images.unsplash.com/photo-1767902012345-bd31f0ba76d7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900',
-};
-
-const FALLBACK_COURSE_ITEMS: CourseItem[] = [
-  {
-    id: '1',
-    title: 'Música e Arte',
-    subtitle: 'Desperte talentos',
-    imageSource: require('@/assets/images/hero-crianca.jpg'),
-  },
-  {
-    id: '2',
-    title: 'Reforço Escolar',
-    subtitle: 'Aprender com apoio',
-    imageSource: require('@/assets/images/hero-crianca.jpg'),
-  },
-  {
-    id: '3',
-    title: 'Tecnologia',
-    subtitle: 'Inclusão digital',
-    imageSource: require('@/assets/images/hero-crianca.jpg'),
-  },
-];
-
-function getCourseImage(courseId: number) {
-  return COURSE_IMAGE_MAP[courseId] ?? COURSE_IMAGE_MAP[1];
+function getCourseImage(course: { image?: string | null }) {
+  return course.image || FALLBACK_COURSE_IMAGE;
 }
 
 function TabButton({
@@ -83,15 +48,11 @@ export default function HomeScreen() {
   const primeiroNome = usuario?.nome?.split(' ')[0] ?? '';
 
   const featuredCourses = useMemo(() => {
-    if (cursos.length === 0) {
-      return FALLBACK_COURSE_ITEMS;
-    }
-
     return cursos.slice(0, 3).map((course) => ({
       id: String(course.id),
       title: course.title,
       subtitle: course.workload ? `${course.workload}h de atividades` : 'Formação gratuita',
-      imageSource: { uri: getCourseImage(course.id) } as ImageSourcePropType,
+      imageSource: { uri: getCourseImage(course) } as ImageSourcePropType,
     }));
   }, [cursos]);
 
@@ -178,40 +139,44 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
 
-          <View style={styles.coursesHeader}>
-            <View style={styles.coursesTitleWrap}>
-              <Ionicons name="book-outline" size={18} color="#1B67C8" />
-              <Text style={styles.coursesTitle}>Atividades em Destaque</Text>
-            </View>
-            <TouchableOpacity onPress={() => router.push('/cursos' as any)}>
-              <Text style={styles.viewAllText}>Ver todos</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.coursesList}>
-            {featuredCourses.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.courseCard}
-                activeOpacity={0.88}
-                onPress={() =>
-                  router.push({
-                    pathname: '/curso/[id]',
-                    params: { id: item.id },
-                  } as any)
-                }>
-                <Image source={item.imageSource} style={styles.courseImage} resizeMode="cover" />
-                <View style={styles.courseOverlay} />
-                <View style={styles.courseTextWrap}>
-                  <Text style={styles.courseTitle}>{item.title}</Text>
-                  <Text style={styles.courseSubtitle}>{item.subtitle}</Text>
+          {featuredCourses.length > 0 && (
+            <>
+              <View style={styles.coursesHeader}>
+                <View style={styles.coursesTitleWrap}>
+                  <Ionicons name="book-outline" size={18} color="#1B67C8" />
+                  <Text style={styles.coursesTitle}>Atividades em Destaque</Text>
                 </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                <TouchableOpacity onPress={() => router.push('/cursos' as any)}>
+                  <Text style={styles.viewAllText}>Ver todos</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.coursesList}>
+                {featuredCourses.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.courseCard}
+                    activeOpacity={0.88}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/curso/[id]',
+                        params: { id: item.id },
+                      } as any)
+                    }>
+                    <Image source={item.imageSource} style={styles.courseImage} resizeMode="cover" />
+                    <View style={styles.courseOverlay} />
+                    <View style={styles.courseTextWrap}>
+                      <Text style={styles.courseTitle}>{item.title}</Text>
+                      <Text style={styles.courseSubtitle}>{item.subtitle}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </>
+          )}
         </View>
       </ScrollView>
 

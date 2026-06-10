@@ -25,15 +25,6 @@ const SUBTEXTO = '#6B87B0';
 const VOLUNTEER_IMAGE =
   'https://images.unsplash.com/photo-1709375635395-7774ae07995a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900';
 
-const FALLBACK_IMPACTS = [
-  { value: '1.200+', label: 'Crianças/ano', icon: '👧', color: '#1565C0' },
-  { value: '8', label: 'Cursos grátis', icon: '📚', color: '#1976D2' },
-  { value: 'R$120k', label: 'Doações no ano', icon: '💛', color: '#F59E0B' },
-  { value: '15+', label: 'Anos de impacto', icon: '⭐', color: '#8B5CF6' },
-  { value: '50+', label: 'Voluntários', icon: '🤝', color: '#10B981' },
-  { value: '95%', label: 'Aprovação famílias', icon: '❤️', color: '#EF4444' },
-];
-
 const IMPACT_COLORS = ['#1565C0', '#1976D2', '#F59E0B', '#8B5CF6', '#10B981', '#EF4444'];
 
 function TestimonialCard({
@@ -96,6 +87,7 @@ export default function AboutScreen() {
   const [impacts, setImpacts] = useState<any[]>([]);
   const [journeys, setJourneys] = useState<any[]>([]);
   const [aboutUs, setAboutUs] = useState<any | null>(null);
+  const [contact, setContact] = useState<any | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -104,12 +96,13 @@ export default function AboutScreen() {
       setLoadingTestimonials(true);
       setErroTestimonials(null);
       try {
-        const [testRes, pillarsRes, impactsRes, journeysRes, aboutRes] = await Promise.all([
+        const [testRes, pillarsRes, impactsRes, journeysRes, aboutRes, contactRes] = await Promise.all([
           fetch(`${API_BASE_URL}/testimonials`),
           fetch(`${API_BASE_URL}/pillars`),
           fetch(`${API_BASE_URL}/impacts`),
           fetch(`${API_BASE_URL}/journeys`),
           fetch(`${API_BASE_URL}/about-us`),
+          fetch(`${API_BASE_URL}/contacts`),
         ]);
 
         if (mounted) {
@@ -120,6 +113,10 @@ export default function AboutScreen() {
           if (aboutRes.ok) {
             const aboutData = await aboutRes.json();
             if (aboutData) setAboutUs(aboutData);
+          }
+          if (contactRes.ok) {
+            const contactData = await contactRes.json();
+            if (contactData) setContact(contactData);
           }
         }
       } catch {
@@ -158,85 +155,88 @@ export default function AboutScreen() {
 
         <View style={styles.pageBody}>
           <View style={styles.aboutCard}>
-            <View style={styles.aboutImageWrap}>
-              <Image source={{ uri: VOLUNTEER_IMAGE }} style={styles.aboutImage} resizeMode="cover" />
-              <View style={styles.aboutImageOverlay} />
-              <View style={styles.sinceBadge}>
-                <Text style={styles.sinceBadgeText}>Desde 2009</Text>
+            {aboutUs?.image ? (
+              <View style={styles.aboutImageWrap}>
+                <Image source={{ uri: aboutUs.image }} style={styles.aboutImage} resizeMode="cover" />
+                <View style={styles.aboutImageOverlay} />
               </View>
-            </View>
+            ) : null}
 
             <View style={styles.aboutContent}>
               <Text style={styles.aboutTitle}>Movimento Pró Criança</Text>
-              <Text style={styles.aboutText}>
-                {aboutUs?.content || 'Somos um movimento social sem fins lucrativos fundado em 2009, com o objetivo de garantir acesso à educação, cultura e desenvolvimento integral para crianças e adolescentes em situação de vulnerabilidade social. Acreditamos que toda criança merece uma infância digna, cheia de oportunidades e repleta de sorrisos.'}
-              </Text>
+              {aboutUs?.content ? (
+                <Text style={styles.aboutText}>{aboutUs.content}</Text>
+              ) : (
+                <Text style={styles.emptySection}>Seção não configurada</Text>
+              )}
             </View>
           </View>
 
           <Text style={styles.sectionTitle}>Nossos Pilares</Text>
-          <View style={styles.pillarsList}>
-            {(pillars.length > 0 ? pillars : [
-              { icon: '🎯', title: 'Missão', text: 'Transformar vidas por meio da educação, cultura e esporte.', background: '#EEF4FF', border: '#1565C0' },
-              { icon: '🌟', title: 'Visão', text: 'Ser referência nacional em proteção e desenvolvimento infantil.', background: '#FFFBEB', border: '#F59E0B' },
-              { icon: '💛', title: 'Valores', text: 'Transparência, amor, respeito, inclusão e compromisso.', background: '#ECFDF5', border: '#10B981' },
-            ]).map((item) => (
-              <View
-                key={item.title}
-                style={[
-                  styles.pillarCard,
-                  { backgroundColor: item.background, borderLeftColor: item.border },
-                ]}>
-                <Text style={styles.pillarIcon}>{item.icon}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.pillarTitle}>{item.title}</Text>
-                  <Text style={styles.pillarText}>{item.text}</Text>
+          {pillars.length > 0 ? (
+            <View style={styles.pillarsList}>
+              {pillars.map((item) => (
+                <View
+                  key={item.id || item.title}
+                  style={[
+                    styles.pillarCard,
+                    { backgroundColor: '#EEF4FF', borderLeftColor: '#1565C0' },
+                  ]}>
+                  <Text style={styles.pillarIcon}>{item.icon}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.pillarTitle}>{item.title}</Text>
+                    <Text style={styles.pillarText}>{item.text}</Text>
+                  </View>
                 </View>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptySection}>Seção não configurada</Text>
+          )}
 
           <View style={styles.sectionTitleRow}>
             <Ionicons name="trophy-outline" size={16} color={AMARELO} />
             <Text style={styles.sectionTitleNoMargin}>Nosso Impacto</Text>
           </View>
-          <View style={styles.impactGrid}>
-            {(impacts.length > 0 ? impacts : FALLBACK_IMPACTS).map((item: any, idx: number) => (
-              <View key={item.label || idx} style={styles.impactCard}>
-                <Text style={styles.impactIcon}>{item.icon}</Text>
-                <Text style={[styles.impactValue, { color: item.color || IMPACT_COLORS[idx % IMPACT_COLORS.length] }]}>{item.metric || item.value}</Text>
-                <Text style={styles.impactLabel}>{item.label}</Text>
-              </View>
-            ))}
-          </View>
+          {impacts.length > 0 ? (
+            <View style={styles.impactGrid}>
+              {impacts.map((item: any, idx: number) => (
+                <View key={item.id || idx} style={styles.impactCard}>
+                  <Text style={styles.impactIcon}>{item.icon}</Text>
+                  <Text style={[styles.impactValue, { color: item.color || IMPACT_COLORS[idx % IMPACT_COLORS.length] }]}>{item.metric || item.value}</Text>
+                  <Text style={styles.impactLabel}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptySection}>Seção não configurada</Text>
+          )}
 
           <Text style={styles.sectionTitle}>Nossa Jornada</Text>
-          <View style={styles.timelineWrap}>
-            <View style={styles.timelineLine} />
-            {(journeys.length > 0 ? journeys : [
-              { year: '2009', title: 'Fundação', description: 'Fundação do movimento por um grupo de educadores.' },
-              { year: '2012', title: 'Expansão Inicial', description: 'Primeiro centro de atividades inaugurado no Recife.' },
-              { year: '2016', title: 'Crescimento', description: 'Expansão para novas unidades e mais cursos gratuitos.' },
-              { year: '2020', title: 'Inovação', description: 'Lançamento de ações online durante a pandemia.' },
-              { year: '2024', title: 'Consolidação', description: 'Mais de 1.200 crianças atendidas por ano.' },
-            ]).map((item: any, index, arr) => {
-              const isLast = index === arr.length - 1;
-              return (
-                <View key={item.id || item.year} style={styles.timelineItem}>
-                  <View style={[styles.timelineDot, isLast && styles.timelineDotLast]}>
-                    <Text style={[styles.timelineDotText, isLast && styles.timelineDotTextLast]}>
-                      {item.year.slice(2)}
-                    </Text>
-                  </View>
+          {journeys.length > 0 ? (
+            <View style={styles.timelineWrap}>
+              <View style={styles.timelineLine} />
+              {journeys.map((item: any, index, arr) => {
+                const isLast = index === arr.length - 1;
+                return (
+                  <View key={item.id || item.year} style={styles.timelineItem}>
+                    <View style={[styles.timelineDot, isLast && styles.timelineDotLast]}>
+                      <Text style={[styles.timelineDotText, isLast && styles.timelineDotTextLast]}>
+                        {item.year.slice(2)}
+                      </Text>
+                    </View>
 
-                  <View style={{ flex: 1, paddingBottom: 2 }}>
-                    <Text style={styles.timelineYear}>{item.year}</Text>
-                    <Text style={styles.timelineEvent}>{item.title ? `${item.title}: ${item.description}` : item.event}</Text>
+                    <View style={{ flex: 1, paddingBottom: 2 }}>
+                      <Text style={styles.timelineYear}>{item.year}</Text>
+                      <Text style={styles.timelineEvent}>{item.title ? `${item.title}: ${item.description}` : item.event}</Text>
+                    </View>
                   </View>
-                </View>
-              );
-            })}
-          </View>
+                );
+              })}
+            </View>
+          ) : (
+            <Text style={styles.emptySection}>Seção não configurada</Text>
+          )}
 
           <View style={styles.sectionTitleRow}>
             <Ionicons name="star" size={16} color={AMARELO} />
@@ -252,7 +252,7 @@ export default function AboutScreen() {
         ) : erroTestimonials ? (
           <Text style={styles.testimonialsError}>{erroTestimonials}</Text>
         ) : testimonials.length === 0 ? (
-          <Text style={styles.testimonialsError}>Nenhum depoimento no momento.</Text>
+          <Text style={styles.emptySection}>Seção não configurada</Text>
         ) : (
           <ScrollView
             horizontal
@@ -290,28 +290,47 @@ export default function AboutScreen() {
           <View style={styles.contactCard}>
             <Text style={styles.contactTitle}>Fale Conosco</Text>
 
-            {[
-              { icon: 'mail-outline', text: 'contato@movimentoprocrianca.org.br' },
-              { icon: 'call-outline', text: '(11) 9 9999-0000' },
-              { icon: 'location-outline', text: 'Rua das Flores, 123 - São Paulo/SP' },
-              { icon: 'globe-outline', text: 'www.movimentoprocrianca.org.br' },
-            ].map((item) => (
-              <TouchableOpacity
-                key={item.text}
-                style={styles.contactRow}
-                onPress={() => {
-                  if (item.icon === 'mail-outline') {
-                    Linking.openURL(`mailto:${item.text}`);
-                  } else if (item.icon === 'call-outline') {
-                    Linking.openURL('tel:+5511999990000');
-                  } else if (item.icon === 'globe-outline') {
-                    Linking.openURL('https://www.movimentoprocrianca.org.br');
-                  }
-                }}>
-                <Ionicons name={item.icon as any} size={14} color={AZUL} />
-                <Text style={styles.contactText}>{item.text}</Text>
-              </TouchableOpacity>
-            ))}
+            {contact ? (
+              <>
+                {contact.email ? (
+                  <TouchableOpacity
+                    style={styles.contactRow}
+                    onPress={() => Linking.openURL(`mailto:${contact.email}`)}>
+                    <Ionicons name="mail-outline" size={14} color={AZUL} />
+                    <Text style={styles.contactText}>{contact.email}</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {contact.phone ? (
+                  <TouchableOpacity
+                    style={styles.contactRow}
+                    onPress={() => Linking.openURL(`tel:${contact.phone.replace(/\D/g, '')}`)}>
+                    <Ionicons name="call-outline" size={14} color={AZUL} />
+                    <Text style={styles.contactText}>{contact.phone}</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {contact.address ? (
+                  <View style={styles.contactRow}>
+                    <Ionicons name="location-outline" size={14} color={AZUL} />
+                    <Text style={styles.contactText}>
+                      {contact.address}{contact.neighborhood ? ` - ${contact.neighborhood}` : ''}{contact.city ? `, ${contact.city}` : ''}{contact.state ? `/${contact.state}` : ''}
+                    </Text>
+                  </View>
+                ) : null}
+                {contact.website ? (
+                  <TouchableOpacity
+                    style={styles.contactRow}
+                    onPress={() => {
+                      const url = contact.website.startsWith('http') ? contact.website : `https://${contact.website}`;
+                      Linking.openURL(url);
+                    }}>
+                    <Ionicons name="globe-outline" size={14} color={AZUL} />
+                    <Text style={styles.contactText}>{contact.website}</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </>
+            ) : (
+              <Text style={styles.emptySection}>Seção não configurada</Text>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -598,6 +617,14 @@ const styles = StyleSheet.create({
   testimonialsLoaderText: {
     color: SUBTEXTO,
     fontSize: 12,
+  },
+  emptySection: {
+    color: '#8CA6CC',
+    fontSize: 12,
+    textAlign: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    fontStyle: 'italic',
   },
   testimonialsError: {
     color: '#8CA6CC',
